@@ -272,24 +272,24 @@ def tprfdr(t,d,e=1,MS=0):
     return tpr, fdr
 
 class PCWA:
-    def __init__(self,dt=1e-5,parallel=False,Mcluster=True):
+    def __init__(self,dt=1e-5,parallel=False,Mcluster=True,logscale=True,wavelet=['ricker'],scales=[0.01e-3,0.1e-3,30],selectivity=0.5,w=2,h=6,trace=None,show_wavelets=False,update_cwt=True,usescratchfile=False):
         self.dt = dt
         self.parallel = parallel
         self.Mcluster = Mcluster
-        self.logscale = True
-        self.wavelet = ['ricker']
-        self.scales = [0.01e-3,0.1e-3,30]
-        self.selectivity = 0.5
-        self.w, self.h = 2, 6
-        self.trace = None
+        self.logscale = logscale
+        self.wavelet = wavelet
+        self.scales = scales
+        self.selectivity = selectivity
+        self.w, self.h = w, h
+        self.trace = trace
         self.events = []
+        self.show_wavelets = show_wavelets
+        self.update_cwt = update_cwt
+        self.usescratchfile = usescratchfile
         self.cwt = {}
         self.wavelets = {}
-        self.show_wavelets = False
-        self.update_cwt = True
-        self.usescratchfile = True
         
-    def detect_events(self,trace, wavelet, scales, threshold=3):
+    def detect_events(self,threshold, trace=None, wavelet=None, scales=None):
         if type(trace) != None:
             self.trace = trace
         if wavelet != None:
