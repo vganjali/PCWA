@@ -253,9 +253,11 @@ def ucluster(args):
     return np.array(selected_events, dtype=d_type)
 
     
-def tprfdr(t,d,e=1,MS=0):
+def tprfdr(t,d,e=1,MS=False):
     tp = []
     D = len(d)
+    if MS: MS = 1
+    else: MS = 0
     if D == 0: return 0, 0
     for tr in t:
         error = e*(1-MS*(1-tr))
@@ -272,10 +274,10 @@ def tprfdr(t,d,e=1,MS=0):
     return tpr, fdr
 
 class PCWA:
-    def __init__(self,dt=1e-5,parallel=False,Mcluster=True,logscale=True,wavelet=['ricker'],scales=[0.01e-3,0.1e-3,30],selectivity=0.5,w=2,h=6,trace=None,show_wavelets=False,update_cwt=True,usescratchfile=False):
+    def __init__(self,dt=1e-5,parallel=False,mcluster=True,logscale=True,wavelet=['ricker'],scales=[0.01e-3,0.1e-3,30],selectivity=0.5,w=2,h=6,trace=None,show_wavelets=False,update_cwt=True,usescratchfile=False):
         self.dt = dt
         self.parallel = parallel
-        self.Mcluster = Mcluster
+        self.mcluster = mcluster
         self.logscale = logscale
         self.wavelet = wavelet
         self.scales = scales
@@ -309,7 +311,7 @@ class PCWA:
                 if self.update_cwt:
                     self.cwt, self.wavelets = {}, {}
                     self.cwt, self.wavelets = cwt(self.trace, _scales, self.wavelet, show_wavelets=self.show_wavelets)
-                clusters = local_maxima(self.cwt,self.wavelets,_scales,threshold,self.Mcluster,1)
+                clusters = local_maxima(self.cwt,self.wavelets,_scales,threshold,self.mcluster,1)
                 args = ((cluster,int(len(_scales)*self.selectivity),self.w,self.h) for cluster in clusters)
             #         for n,island in enumerate(islands): 
             #             selected_events.append(select_events(island,selectivity,w,h))
@@ -320,7 +322,7 @@ class PCWA:
             if self.update_cwt:
                 self.cwt, self.wavelets = {}, {}
                 self.cwt, self.wavelets = cwt(self.trace, _scales, self.wavelet, show_wavelets=self.show_wavelets, use_scratch=self.usescratchfile)
-            clusters = local_maxima(self.cwt,self.wavelets,_scales,threshold,self.Mcluster,self.usescratchfile,1)
+            clusters = local_maxima(self.cwt,self.wavelets,_scales,threshold,self.mcluster,self.usescratchfile,1)
             print(len(clusters))
             args = ((cluster,int(len(_scales)*self.selectivity),self.w,self.h) for cluster in clusters)
         #         for n,island in enumerate(islands): 
