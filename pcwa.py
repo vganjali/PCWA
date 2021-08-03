@@ -1,5 +1,7 @@
 import numpy as np
+import pandas as pd
 import h5py
+from numpy.lib.arraysetops import isin
 from scipy.special import erf
 from scipy.special import erf
 from scipy.signal import find_peaks, convolve
@@ -155,7 +157,7 @@ def cwt(data, scales, wavelets, use_scratch=True, show_wavelets=False):
     for wavelet in wavelets:
         if wavelet == 'ricker': 
             N = 1 
-            wvlts[wavelet] = [ricker(s) for s in scales]
+            wvlts[wavelet] = {'N':N, 'w':[ricker(s) for s in scales]}
         elif wavelet[:4] == 'msg-':
             N = int(wavelet[4:]) 
             wvlts[wavelet] = {'N':N, 'w':[msg(s, N=N, mod=0.8, shift=1, skewness=0.5) for s in scales]} 
@@ -231,6 +233,63 @@ def local_maxima(cwt, wavelets, scales, threshold, macro_clusters=True, use_scra
         if use_scratch:
             cwt.close()        
         return [all_events]
+def cwt_local_maxima(data,scales,wavelets,threshold,macro_clusters=True,show_wavelets=False,extent=1):
+    all_events = np.empty((0,), dtype=d_type)
+    wvlts = {wavelet:{} for wavelet in wavelets}
+    if show_wavelets:
+        plt.figure()
+    for wavelet in wavelets:
+        if wavelet == 'ricker': 
+            N = 1 
+            wvlts[wavelet] = {'N':N, 'w':[ricker(s) for s in scales]}
+        elif wavelet[:4] == 'msg-':
+            N = int(wavelet[4:]) 
+            wvlts[wavelet] = {'N':N, 'w':[msg(s, N=N, mod=0.8, shift=1, skewness=0.5) for s in scales]} 
+        elif wavelet[:5] == 'msge-':
+            N = len(wavelet[5:]) 
+            wvlts[wavelet] = {'N':N, 'w':[msg_encoded(s, pattern=wavelet[5:], mod=1.5, shift=-2.9, skewness=0.04) for s in scales]}
+        elif wavelet[:7] == 'morlet-':
+            N = int(wavelet[7:]) 
+            wvlts[wavelet] = {'N':N, 'w':[morlet(s, N=N, is_complex=False) for s in scales]}
+        elif wavelet[:8] == 'cmorlet-':
+            N = int(wavelet[8:])
+    #         print(N)
+            wvlts[wavelet] = {'N':N, 'w':[morlet(s, N=N, is_complex=True) for s in scales]}
+        if show_wavelets:
+            plt.plot(wvlts[wavelet]['w'][0],label=wavelet)
+#         print(len(wvlts[wavelet]['w'][0]))
+                # _cwt[wavelet] = np.zeros((len(data),len(wvlts[wavelet]['w'])))
+        if np.iscomplexobj(wvlts[wavelet]['w'][0]):
+            for n, w in enumerate(wvlts[wavelet]['w']):
+                _l = floor(min(len(data),len(w))/2)
+                _cwt = np.abs(convolve(data, w, mode='valid')) 
+                _index, _ = find_peaks(_cwt, distance=wvlts[wavelet]['N']*scales[n], height=threshold)
+                all_events = np.append(all_events, np.array(list(zip((_index+_l), [scales[n]]*len(_index), _cwt[_index], [wvlts[wavelet]['N']]*len(_index))), dtype=d_type), axis=0)
+    #             _cwt[:,n] = (0.5*np.correlate(data, w, mode='same')) 
+    #             _cwt[:,n] += np.abs(_cwt[:,n])      
+        else:
+            for n, w in enumerate(wvlts[wavelet]['w']):
+                _l = floor(min(len(data),len(w))/2)
+        #         _cwt[:,n] = np.abs(np.correlate(data, w, mode='same')) 
+                _cwt = (0.5*convolve(data, w, mode='valid')) 
+                _cwt += np.abs(_cwt)
+                _index, _ = find_peaks(_cwt, distance=wvlts[wavelet]['N']*scales[n], height=threshold)
+                all_events = np.append(all_events, np.array(list(zip((_index+_l), [scales[n]]*len(_index), _cwt[_index], [wvlts[wavelet]['N']]*len(_index))), dtype=d_type), axis=0)
+                # print(_index)
+    if show_wavelets:
+        plt.legend()
+        plt.show()
+    if macro_clusters:
+        all_events_t_l = all_events['time']-0.5*extent*np.multiply(all_events['N'],all_events['scale']) 
+        _index_l = np.argsort(all_events_t_l) 
+        all_events_t_r = all_events['time']+0.5*extent*np.multiply(all_events['N'],all_events['scale']) 
+        _index_r = np.argsort(all_events_t_r) 
+        all_events_overlap = all_events_t_r[_index_r[:-1]]-all_events_t_l[_index_l[1:]] 
+        _slices = np.argwhere(all_events_overlap <= 0).flatten()+1 
+        _mc = np.split(all_events[_index_l], _slices, axis=0) 
+        return _mc
+    else:
+        return [all_events]
 def ucluster(args):
     events, selectivity, w, h = args
     selected_events = []
@@ -274,7 +333,7 @@ def tprfdr(t,d,e=1,MS=False):
     return tpr, fdr
 
 class PCWA:
-    def __init__(self,dt=1e-5,parallel=False,mcluster=True,logscale=True,wavelet=['ricker'],scales=[0.01e-3,0.1e-3,30],selectivity=0.5,w=2,h=6,trace=None,show_wavelets=False,update_cwt=True,usescratchfile=False):
+    def __init__(self,dt=1,parallel=False,mcluster=True,logscale=True,wavelet=['ricker'],scales=[10,100,30],selectivity=0.3,w=2,h=6,extent=1,trace=None,show_wavelets=False,update_cwt=True,keep_cwt=False,usescratchfile=False):
         self.dt = dt
         self.parallel = parallel
         self.mcluster = mcluster
@@ -283,17 +342,23 @@ class PCWA:
         self.scales = scales
         self.selectivity = selectivity
         self.w, self.h = w, h
+        self.extent = extent
         self.trace = trace
         self.events = []
         self.show_wavelets = show_wavelets
         self.update_cwt = update_cwt
         self.usescratchfile = usescratchfile
+        self.keep_cwt = keep_cwt
         self.cwt = {}
         self.wavelets = {}
         
     def detect_events(self,threshold, trace=None, wavelet=None, scales=None):
-        if type(trace) != None:
-            self.trace = trace
+        if type(trace) in [list, np.ndarray, pd.Series]:
+            self.trace = np.array(trace).flatten()
+        elif type(self.trace) in [list, np.ndarray, pd.Series]:
+            trace = np.array(self.trace).flatten()
+        else:
+            raise RuntimeError('Input data not valid.')
         if wavelet != None:
             self.wavelet = wavelet
         if scales != None:
@@ -311,7 +376,7 @@ class PCWA:
                 if self.update_cwt:
                     self.cwt, self.wavelets = {}, {}
                     self.cwt, self.wavelets = cwt(self.trace, _scales, self.wavelet, show_wavelets=self.show_wavelets)
-                clusters = local_maxima(self.cwt,self.wavelets,_scales,threshold,self.mcluster,1)
+                clusters = local_maxima(self.cwt,self.wavelets,_scales,threshold,self.mcluster,self.extent)
                 args = ((cluster,int(len(_scales)*self.selectivity),self.w,self.h) for cluster in clusters)
             #         for n,island in enumerate(islands): 
             #             selected_events.append(select_events(island,selectivity,w,h))
@@ -319,14 +384,17 @@ class PCWA:
                 [selected_events.append(e) for e in r.get()]
                 self.events = np.concatenate(tuple(selected_events),axis=0)
         else:
-            if self.update_cwt:
-                self.cwt, self.wavelets = {}, {}
-                self.cwt, self.wavelets = cwt(self.trace, _scales, self.wavelet, show_wavelets=self.show_wavelets, use_scratch=self.usescratchfile)
-            clusters = local_maxima(self.cwt,self.wavelets,_scales,threshold,self.mcluster,self.usescratchfile,1)
-            print(len(clusters))
+            if self.keep_cwt:
+                if self.update_cwt:
+                    self.cwt, self.wavelets = {}, {}
+                    self.cwt, self.wavelets = cwt(self.trace, _scales, self.wavelet, show_wavelets=self.show_wavelets, use_scratch=self.usescratchfile)
+                clusters = local_maxima(self.cwt,self.wavelets,_scales,threshold,self.mcluster,self.usescratchfile,self.extent)
+            #         for n,island in enumerate(islands): 
+            #             selected_events.append(select_events(island,selectivity,w,h))
+            else:
+                clusters = cwt_local_maxima(self.trace,_scales,self.wavelet,threshold,self.mcluster,self.show_wavelets,self.extent)
+            # print(len(clusters))
             args = ((cluster,int(len(_scales)*self.selectivity),self.w,self.h) for cluster in clusters)
-        #         for n,island in enumerate(islands): 
-        #             selected_events.append(select_events(island,selectivity,w,h))
             for e in map(ucluster, args):
                 selected_events.append(e)
             self.events = np.concatenate(tuple(selected_events),axis=0)

@@ -5,9 +5,12 @@ A highly parallel and fast event detector based on CWT transform.
 ## Requirements
 - Python >= 3.8.5
 - numpy >= 1.19.2
-- scipy >= 1.6
+- scipy >= 1.6.2
 - matplotlib >= 3.3.4
 - h5py >= 2.10.0
+- pandas >= 1.2.1
+
+Most likely will work with older versions (Python > 3), not tested by the time of writing this document.
 
 ## How to use PCWA
 PCWA is designed as a Python class and requires initializing. Import pcwa and initiate a new instant:
@@ -56,3 +59,60 @@ some of pcwa parameters can overridden when calling `detect_events()` by passing
 - `scales`:       overrides scales
 
 `threshold` is the only parameter required at each call.
+
+
+## Example Code
+The example below shows how to use PCWA to detect peaks in a simulated mass spectroscopy data. 
+
+```python
+import numpy as np
+import pandas as pd
+import pcwa as pcwa
+import matplotlib.pyplot as plt
+# read the raw mass scpectroscopy data and truth values
+df_raw = pd.read_csv('n100sig66_dataset_1_25/Dataset_14/RawSpectra/noisy22.txt',sep=' ')
+df_true = pd.read_csv('n100sig66_dataset_1_25/Dataset_14/truePeaks/truth22.txt',sep=' ')
+# create pcwa_analyzer object and set the desired parameters
+pcwa_analyzer = pcwa.PCWA()
+pcwa_analyzer.trace = df_raw['Intensity']
+pcwa_analyzer.dt = 1
+pcwa_analyzer.scales = [10,100,100]
+pcwa_analyzer.wavelet = ['ricker']
+pcwa_analyzer.keep_cwt = False
+pcwa_analyzer.w, pcwa_analyzer.h = 0.2, 1
+pcwa_analyzer.show_wavelets = False
+pcwa_analyzer.usescratchfile = False
+# detect events (peaks)
+events = pcwa_analyzer.detect_events(threshold=200)
+# fine tune the location of detected peaks
+loc = [int(e-events['scale'][n]+np.argmax(df_raw['Intensity'][int(e-events['scale'][n]):int(e+events['scale'][n])])) for n,e in enumerate(events['time'])]
+
+fig, ax = plt.subplots(3,1,figsize=(16,4),dpi=96,sharex=True,gridspec_kw={'height_ratios': [12,1,1]})
+plt.subplots_adjust(hspace=0,wspace=0)
+l0, = ax[1].plot(df_true['Mass'],df_true['Particles']*0, '|',markersize=10,color='gray',label='Truth')
+ax[0].plot(df_raw['Mass'],df_raw['Intensity'],color='blue')
+l1, = ax[2].plot(df_raw['Mass'].iloc[loc],[0]*len(loc),'|',markersize=10,color='red',label='PCWA')
+ax[1].set_yticks([])
+ax[1].set_ylim(0,0)
+ax[2].set_yticks([])
+ax[2].set_ylim(0,0)
+ax[0].set_ylabel('Intensity')
+ax[-1].set_xlabel('m/z')
+plt.legend(handles=[l0,l1], bbox_to_anchor=(1.0, 4), loc='upper left')
+plt.show()
+```
+
+Once the analysis is finished, the plot window should show the results as below:
+>![example_0](images/example_0_output.png)
+
+If you want to calculate TPR and FDR value, useful for ROC plots, PCWA class provides a function to do that.
+```python
+true_peaks = np.sort(df_true['Mass'].to_numpy())
+detected_peaks = np.sort(df_raw['Mass'].iloc[loc].to_numpy())
+tpr, fdr = pcwa.tprfdr(true_peaks, detected_peaks, e=0.01, MS=True)
+print(f"TPR={tpr:.3f}, FDR={fdr:.3f}")
+```
+> TPR=0.864, FDR=0.014
+
+the command window should show the TPR and FDR values based on the ground truth values and acceptable error range (1% here). MS parameter determines the way of applying acceptable error, for Mass Spectroscopy data error is considered relative to Mass value ($e \times Mass$). If MS=False, the absolute error value is considered.
+The full example file is provided in this repository.
