@@ -44,6 +44,7 @@ cwt = {}                               # dictionary of cwt coefficients
 wavelets = {}                          # dictionary of generated scaled&normalized 1D wavelet arrays
 show_wavelets = False                  # plot wavelet functions
 update_cwt = True                      # if False, will use the current cwt coefficients to detect events to save time tuning threshold parameters
+keep_cwt = False                       # if False, will use less memory by running conv() and local_maxima() at the same time. Otherwise will generate entire CWT coefficient before looking for local maxima (conventional method)
 usescratchfile = False                 # stores cwt coefficients in the scarach file (hdf5 formatted) file
 ```
 
