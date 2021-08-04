@@ -70,9 +70,11 @@ import numpy as np
 import pandas as pd
 import pcwa as pcwa
 import matplotlib.pyplot as plt
+
 # read the raw mass scpectroscopy data and truth values
 df_raw = pd.read_csv('n100sig66_dataset_1_25/Dataset_14/RawSpectra/noisy22.txt',sep=' ')
 df_true = pd.read_csv('n100sig66_dataset_1_25/Dataset_14/truePeaks/truth22.txt',sep=' ')
+
 # create pcwa_analyzer object and set the desired parameters
 pcwa_analyzer = pcwa.PCWA()
 pcwa_analyzer.trace = df_raw['Intensity']
@@ -83,8 +85,10 @@ pcwa_analyzer.keep_cwt = False
 pcwa_analyzer.w, pcwa_analyzer.h = 0.2, 1
 pcwa_analyzer.show_wavelets = False
 pcwa_analyzer.usescratchfile = False
+
 # detect events (peaks)
 events = pcwa_analyzer.detect_events(threshold=200)
+
 # fine tune the location of detected peaks
 loc = [int(e-events['scale'][n]+np.argmax(df_raw['Intensity'][int(e-events['scale'][n]):int(e+events['scale'][n])])) for n,e in enumerate(events['time'])]
 
