@@ -313,6 +313,24 @@ def ucluster(args):
 
     
 def tprfdr(t,d,e=1,MS=False):
+    """
+        Calculate TPR and FDR values for general and mass-spectroscopy data
+        ----------
+        t : list, ndarray
+            true location
+        d : list, ndarray
+            detected location
+        e : float
+            acceptable error range (tolerance) to consider an event as true event. 
+            If MS=0, e value is abslute
+            if MS=1, e is relative to location
+        MS: bool
+            set true if used for mass spectroscopy data.
+        Returns
+        -------
+        tpr, fdr: (2,) float
+            TPR and FDR values
+        """
     tp = []
     D = len(d)
     if MS: MS = 1
@@ -353,6 +371,26 @@ class PCWA:
         self.wavelets = {}
         
     def detect_events(self,threshold, trace=None, wavelet=None, scales=None):
+        """
+        Detect events using the PCWA object with entered parameters.
+        Parameters
+        ----------
+        threshold : number
+            threshold (height) used to find initial local maxima.
+        trace : list, ndarray or pandas.Series
+            Raw data to detect events in.
+        wavelet : string or list of strings
+            Name of the wavelet function(s) to calculate CWT coefficients. Currently acceptable values are:
+            'ricker', 'msg-N', msge-w0w1w2...', 'morlet-N', 'cmorlet-N'
+            N: is the number of peaks in a multi-peak wavelet, i.e. msg-8 contains 8 peaks. 
+            msge is encoded version of msg where the weight of individual peaks are given as a series of hex numbers. i.e. msge-F8A2 is a msg wavelet with first peak height being 8 times the last peak.
+        scales: [float, float, int]
+            [minimum, maximum, count] of scales. Scale values are in dt scale.
+        Returns
+        -------
+        events : ndarray with dtype([('time', 'f8'), ('scale', 'f8'), ('coeff', 'f8'), ('N', 'f8')])
+            Array including information of detected events.
+        """
         if type(trace) in [list, np.ndarray, pd.Series]:
             self.trace = np.array(trace).flatten()
         elif type(self.trace) in [list, np.ndarray, pd.Series]:
