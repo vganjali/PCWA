@@ -1,5 +1,5 @@
 # PCWA
-A highly parallel and fast event detector based on CWT transform.
+A highly parallel and fast event detector based on CWT transform. *PCWA* is a multiscale approache to find events with any shape with a mother wavelet that matches with events shape (details provided in the *Nature Communications* manuscript currently under review). Unlike previous CWT based peak finders, *PCWA* is able to fit with any user defined mother wavelet function, $\psi(u,s)$, by grouping and clustering initial candidate points (local maxima). The clustering step involves *$Macro$-* and *$\mu$-* clustering steps to break big data into smaller *M_clusters*. The clustering steps utilized **x-axis**, **scale-axis** and **coefficient values** all together to improve accuracy of located events.
 
 
 ## Requirements
@@ -13,7 +13,7 @@ A highly parallel and fast event detector based on CWT transform.
 Most likely will work with older versions (Python > 3), not tested by the time of writing this document.
 
 ## How to use PCWA
-PCWA is designed as a Python class and requires initializing. Import pcwa and initiate a new instant:
+*PCWA* is designed as a Python class and requires initializing. Import *pcwa* and initiate a new instant:
 
 ```python
 import pcwa as pcwa
@@ -37,6 +37,7 @@ scales = [0.01e-3,0.1e-3,30]           # scale range and count in in s
 selectivity = 0.5                      # minimum number of candidates in a valid micro-cluster
 w = 2                                  # spreading factor in x-axis
 h = 6                                  # spreading factor in y-axis (scale-axis)
+extent = 1                             # global extent along x and y axis, used in macro-clustering
 trace = None                           # trace (data) variable. 1D numpy vector
 events = []                            # list of detected events (valid after calling detect_events() function)
 cwt = {}                               # dictionary of cwt coefficients
@@ -62,7 +63,7 @@ some of pcwa parameters can overridden when calling `detect_events()` by passing
 
 
 ## Example Code
-The example below shows how to use PCWA to detect peaks in a simulated mass spectroscopy data. 
+The example below shows how to use *PCWA* to detect peaks in a simulated mass spectroscopy data. 
 
 ```python
 import numpy as np
@@ -105,7 +106,7 @@ plt.show()
 Once the analysis is finished, the plot window should show the results as below:
 >![example_0](images/example_0_output.png)
 
-If you want to calculate TPR and FDR value, useful for ROC plots, PCWA class provides a function to do that.
+If you want to calculate **TPR** and **FDR** value, useful for *ROC* plots, *PCWA* class provides a function to do that.
 ```python
 true_peaks = np.sort(df_true['Mass'].to_numpy())
 detected_peaks = np.sort(df_raw['Mass'].iloc[loc].to_numpy())
@@ -114,5 +115,5 @@ print(f"TPR={tpr:.3f}, FDR={fdr:.3f}")
 ```
 > TPR=0.864, FDR=0.014
 
-the command window should show the TPR and FDR values based on the ground truth values and acceptable error range (1% here). MS parameter determines the way of applying acceptable error, for Mass Spectroscopy data error is considered relative to Mass value ($e \times Mass$). If MS=False, the absolute error value is considered.
-The full example file is provided in this repository.
+the command window should show the *TPR* and *FDR* values based on the ground truth values and acceptable error range (1% here). *MS* parameter determines the way of applying acceptable error, for mass spectroscopy data error is considered relative to mass value ($e \times Mass$). If `MS=False`, the absolute error value is considered.
+The full example file is provided in this repository ([ms_example.py](https://github.com/vganjali/PCWA/blob/main/ms_example.py)).
