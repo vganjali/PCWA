@@ -122,3 +122,5 @@ print(f"TPR={tpr:.3f}, FDR={fdr:.3f}")
 
 the command window should show the *TPR* and *FDR* values based on the ground truth values and acceptable error range (1% here). *MS* parameter determines the way of applying acceptable error, for mass spectroscopy data error is considered relative to mass value (<img src="https://render.githubusercontent.com/render/math?math=e \times Mass">). If `MS=False`, the absolute error value is considered.
 The full example file is provided in this repository ([ms_example.py](https://github.com/vganjali/PCWA/blob/main/ms_example.py)).
+
+The provided dataset is a subset taken from the simulated Mass Spectroscopy dataset (DOI: [10.1093/bioinformatics/bti254](https://doi.org/10.1093/bioinformatics/bti254)).
