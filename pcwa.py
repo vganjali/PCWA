@@ -12,9 +12,23 @@ import multiprocessing as mp
 
 
 #================================= Wavelet functions =================================#
-def ricker(scale=10, N=1, window=1, dt=1):
-    resolution = scale/dt
-#     print(resolution)
+def ricker(scale=10, window=1, dx=1):
+    """ Creates a scaled Ricker (Mexican Hat) wavelet
+    Parameters
+    ----------
+    scale : float
+        The scale applied on the mother wavelet, here it is equivalent to FWHM (default is 10).
+    Window : float
+        The length of wavelet, can extend or crop the wavelet function on both sides (default is 1).
+    dx : float
+        The sampling step size (default is 1).
+    Returns
+    -------
+    wavelet : ndarray of floats
+        Array of scaled Ricker wavelet function.
+
+    """
+    resolution = scale/dx
     length = int((10*window)*resolution)
     a = resolution/1.25187536
     t = np.arange(length)
@@ -22,11 +36,28 @@ def ricker(scale=10, N=1, window=1, dt=1):
         *np.exp(-(t-length/2)**2/(2*a**2))
     s_square_norm = np.trapz(s**2, dx=1)
     s -= np.mean(s)
-#     return s*(s_square_norm**2)
     return s/np.sqrt(s_square_norm)
 
-def morlet(scale=10, N=6, window=1, is_complex=False, dt=1):
-    resolution = scale/dt
+def morlet(scale=10, N=6, window=1, is_complex=False, dx=1):
+    """ Creates a scaled Morlet wavelet
+    Parameters
+    ----------
+    scale : float
+        The scale applied on the mother wavelet, here it is equivalent to FWHM (default is 10).
+    N : int
+        The number of peaks (effective) (default is 6)
+    Window : float
+        The length of wavelet, can extend or crop the wavelet function on both sides (default is 1).
+    is_complex : bool
+        True value will use complex Morlet wavelet (default is False).
+    dx : float
+        The sampling step size (default is 1).
+    Returns
+    -------
+    wavelet : ndarray of floats
+        Array of scaled Morlet wavelet function.
+    """
+    resolution = scale/dx
     length = int(2*(N+4)*window*resolution)
     t = np.arange(length)
     sigma = length/(10*window)
@@ -41,6 +72,24 @@ def morlet(scale=10, N=6, window=1, is_complex=False, dt=1):
     return s/np.sqrt(s_square_norm)
 
 def skew_normal(x, mu, sigma, alpha=0):
+    """ Creates a skewed normal function
+    Parameters
+    ----------
+    scale : float
+        The scale applied on the mother wavelet, here it is equivalent to FWHM (default is 10).
+    N : int
+        The number of peaks (effective) (default is 6)
+    Window : float
+        The length of wavelet, can extend or crop the wavelet function on both sides (default is 1).
+    is_complex : bool
+        True value will use complex Morlet wavelet (default is False).
+    dx : float
+        The sampling step size (default is 1).
+    Returns
+    -------
+    skew_normal : ndarray of floats
+        Array of skewed normal function.
+    """
     # mean = mu - sigma*alpha/np.sqrt(1+alpha**2)*np.sqrt(2/np.pi)
     delta = alpha/(np.sqrt(1+alpha**2))
     mu_z = np.sqrt(2/np.pi)*delta
@@ -56,54 +105,105 @@ def skew_normal(x, mu, sigma, alpha=0):
     _PHI = 1/2*(1+erf(alpha*(x-xi)/sigma/np.sqrt(2)))
     return 2/sigma*phi*_PHI
 
-def msg(scale=10, N=6, pattern='6', window=1, mplx_ratio=1, weight=1, mod=0.5, shift=1, skewness=1, is_complex=False, dt=1, mf=False):
+def msg(scale=10, N=6, window=1, mplx_ratio=[1], mod=0.5, shift=1, skewness=1, is_complex=False, is_mf=False, dx=1):
+    """ Creates a combinatorial (multiplexed) Multi-spot Gaussian with N peaks (MSG-N) wavelet function.
+     useful to detect events of multiple peaks.
+    Parameters
+    ----------
+    scale : float
+        The scale applied on the mother wavelet, here it is equivalent to FWHM (default is 10).
+    N : int
+        The number of peaks (effective) (default is 6)
+    Window : float
+        The length of wavelet, can extend or crop the wavelet function on both sides (default is 1).
+    mplx_ratio : list of floats, optional
+        The ratio of MSG signal multiplexing (weigth of each MSG signal) (default is [1]).
+    mod : float
+        Modulation ratio of peak width vs the gap between subsequent peaks (default is 0.5).
+    shift : float
+        The shift of side negative peaks from the last positive peaks on each end (default is 1).
+    skewness : float
+        The skewness applied for the side negative peaks. 
+        Helps with tuning the sensitivity of differntiating between MSG-N vs MSG-(N+1) events (default is 1).
+    is_complex : bool
+        True value will use complex Morlet wavelet (default is False).
+    is_mf : bool
+        If True, wavelet is used as a matched filter (doesn't have the side negative peaks) (default is False).
+    dx : float
+        The sampling step size (default is 1).
+    Returns
+    -------
+    wavelet : ndarray of floats
+        Array of MSG-N wavelet function.
+    """
     N = int(N)
     if (type(N) != list):
         N = [N]
     if ((type(mplx_ratio) == float) or (type(mplx_ratio) == int)):
         mplx_ratio = [mplx_ratio]*len(N)
     elif (len(mplx_ratio) != len(N)):
-        print('multiplex ratio should have same length as N')
-        return
-    if ((type(weight) == float) or (type(weight) == int)):
-        weight = [weight]*max(N)
-    elif (len(weight) != N):
-        print('weight ratio should have a length equal to N')
-        return
+        raise ValueError('multiplex ratio should have same length as N')
     N_max = max(N)
-#     mod *= (4.29193/2.35482)
     skewness *= 1.2*mod
-    resolution = scale/dt
+    resolution = scale/dx
     sigma = resolution/4.29193*mod*N_max/8
-#     amp = np.array([3,4,3,2,4,3,3,3])
-#     amp = amp[::-1]/np.sum(amp)*N_max
-    # sigma = resolution/4*mod
     length = int(N_max*resolution + shift*resolution + (1+4*skewness)*5*N_max*window*sigma)
     t = np.arange(length)
     if is_complex:
         s = np.zeros((length,),dtype=np.complex)
         for i,n in enumerate(N):
             for m in range(n):
-                s += mplx_ratio[i]*weight[m]*skew_normal(t,length/2+((n-1)/2-m+0.125)*(N_max/n)*resolution,sigma, alpha=0)
+                s += mplx_ratio[i]*skew_normal(t,length/2+((n-1)/2-m+0.125)*(N_max/n)*resolution,sigma, alpha=0)
                 s += 1j*mplx_ratio[i]*skew_normal(t,length/2+((n-1)/2-m-0.125)*(N_max/n)*resolution,sigma, alpha=0)
-        s -= np.sum(weight)/2*skew_normal(t, length/2+(N_max/2+shift/2+0.125)*resolution, (1+4*skewness)*N_max/2*window*sigma, alpha=4*skewness*N_max/2*window)
-        s -= 1j*np.sum(weight)/2*skew_normal(t, length/2+(N_max/2+shift/2-0.125)*resolution, (1+4*skewness)*N_max/2*window*sigma, alpha=4*skewness*N_max/2*window)
-        s -= np.sum(weight)/2*skew_normal(t, length/2-(N_max/2+shift/2-0.125)*resolution, (1+4*skewness)*N_max/2*window*sigma, alpha=-4*skewness*N_max/2*window)
-        s -= 1j*np.sum(weight)/2*skew_normal(t, length/2-(N_max/2+shift/2+0.125)*resolution, (1+4*skewness)*N_max/2*window*sigma, alpha=-4*skewness*N_max/2*window)
+        s -= 0.5*skew_normal(t, length/2+(N_max/2+shift/2+0.125)*resolution, (1+4*skewness)*N_max/2*window*sigma, alpha=4*skewness*N_max/2*window)
+        s -= 0.5j*skew_normal(t, length/2+(N_max/2+shift/2-0.125)*resolution, (1+4*skewness)*N_max/2*window*sigma, alpha=4*skewness*N_max/2*window)
+        s -= 0.5*skew_normal(t, length/2-(N_max/2+shift/2-0.125)*resolution, (1+4*skewness)*N_max/2*window*sigma, alpha=-4*skewness*N_max/2*window)
+        s -= 0.5j*skew_normal(t, length/2-(N_max/2+shift/2+0.125)*resolution, (1+4*skewness)*N_max/2*window*sigma, alpha=-4*skewness*N_max/2*window)
     else:
         s = np.zeros((length,))
         for i,n in enumerate(N):
             for m in range(n):
-                s += mplx_ratio[i]*weight[m]*skew_normal(t,length/2-((n-1)/2-m)*(N_max/n)*resolution,sigma, alpha=0)
-    if not mf:
-        s -= np.sum(weight)/2*skew_normal(t, length/2+(N_max/2+shift/2)*resolution, (1+4*skewness)*N_max/2*window*sigma, alpha=4*skewness*N_max/2*window)
-        s -= np.sum(weight)/2*skew_normal(t, length/2-(N_max/2+shift/2)*resolution, (1+4*skewness)*N_max/2*window*sigma, alpha=-4*skewness*N_max/2*window)
+                s += mplx_ratio[i]*skew_normal(t,length/2-((n-1)/2-m)*(N_max/n)*resolution,sigma, alpha=0)
+    if not is_mf:
+        s -= 0.5*skew_normal(t, length/2+(N_max/2+shift/2)*resolution, (1+4*skewness)*N_max/2*window*sigma, alpha=4*skewness*N_max/2*window)
+        s -= 0.5*skew_normal(t, length/2-(N_max/2+shift/2)*resolution, (1+4*skewness)*N_max/2*window*sigma, alpha=-4*skewness*N_max/2*window)
         s -= np.mean(s)
     s_square_norm = np.trapz(np.abs(s)**2, dx=1)
     s = s/np.sqrt(s_square_norm)
     return s
 
-def msg_encoded(scale=10, pattern='1201', window=1, mod=0.5, shift=1, skewness=1, is_complex=False, dt=1, mf=False):
+def msg_encoded(scale=10, pattern='F08', window=1, mod=0.5, shift=1, skewness=1, is_complex=False, is_mf=False, dx=1):
+    """ Creates an encoded Multi-spot Gaussian with N peaks (MSGE-N) wavelet function.
+
+    useful to detect events of multiple encoded peaks to perfectly match multi-spot signal pattern.
+    Parameters
+    ----------
+    scale : float
+        The scale applied on the mother wavelet, here it is equivalent to FWHM (default is 10).
+    pattern : str
+        The string of Hex values determining weight of each peak. 
+        i.e. a value of 'F08' means 3 placement of peaks, first 100% height, 
+        second 0 (skipped peak), and the third 50% height (default is 'F08').
+    Window : float
+        The length of wavelet, can extend or crop the wavelet function on both sides (default is 1).
+    mod : float
+        Modulation ratio of peak width vs the gap between subsequent peaks (default is 0.5).
+    shift : float
+        The shift of side negative peaks from the last positive peaks on each end (default is 1).
+    skewness : float
+        The skewness applied for the side negative peaks. 
+        Helps with tuning the sensitivity of differntiating between MSG-N vs MSG-(N+1) events (default is 1).
+    is_complex : bool
+        True value will use complex Morlet wavelet (default is False).
+    is_mf : bool
+        If True, wavelet is used as a matched filter (doesn't have the side negative peaks) (default is False).
+    dx : float
+        The sampling step size (default is 1).
+    Returns
+    -------
+    wavelet : ndarray of floats
+        Array of MSGE-N wavelet function.
+    """
     if (type(pattern) != list):
         pattern = [pattern]
     N = [0]*len(pattern)
@@ -112,7 +212,7 @@ def msg_encoded(scale=10, pattern='1201', window=1, mod=0.5, shift=1, skewness=1
         N[i] = len(pattern[i])
     N_max = max(N)
     skewness *= 1.2*mod
-    resolution = scale/dt
+    resolution = scale/dx
     sigma = resolution/4.29193*mod*N_max/8
     length = int(N_max*resolution + shift*resolution + (1+4*skewness)*5*N_max*window*sigma)
     t = np.arange(length)
@@ -131,7 +231,7 @@ def msg_encoded(scale=10, pattern='1201', window=1, mod=0.5, shift=1, skewness=1
         for i,n in enumerate(N):
             for m in range(n):
                 s += pattern[i][m]*skew_normal(t,length/2-((n-1)/2-m)*(N_max/n)*resolution,sigma, alpha=0)
-    if not mf:
+    if not is_mf:
         s -= np.sum(pattern)/2*skew_normal(t, length/2+(N_max/2+shift/2)*resolution, (1+4*skewness)*N_max/2*window*sigma, alpha=4*skewness*N_max/2*window)
         s -= np.sum(pattern)/2*skew_normal(t, length/2-(N_max/2+shift/2)*resolution, (1+4*skewness)*N_max/2*window*sigma, alpha=-4*skewness*N_max/2*window)
         s -= np.mean(s)
@@ -142,7 +242,42 @@ def msg_encoded(scale=10, pattern='1201', window=1, mod=0.5, shift=1, skewness=1
 #============================== CWT and Event Detection ==============================#
 d_type = np.dtype([('time', 'f8'), ('scale', 'f8'), ('coeff', 'f8'), ('N', 'f8')])
 def cwt(data, scales, wavelets, use_scratch=True, show_wavelets=False):
+    """ Calculates CWT coefficients for the input data based on the list of 
+    wavelet functions and scales provided.
+    Parameters
+    ----------
+    data : array_like
+        Array to calculate CWT coefficients.
+    scales : array_like
+        Array of scale values.
+    wavelets : list of str
+        List of wavelet function names available in 
+        PCWA ('ricker','morlet-N', 'cmorlet-N', 'msg-N', 'msge-#') 
+        where N is the number of peaks for multi-peak signals.
+        # for msge wavelet is the encoding string. i.e. msge-F08
+    use_scratch : bool
+        Use a scratch file on disk (hdf5 format) for CWT coefficients. 
+        Set True if you need to store CWT coefficient for later uses.
+    show_wavelets : bool
+        Plots a sample of wavelet functions for confirmation purposes.
+    skewness : float
+        The skewness applied for the side negative peaks. 
+        Helps with tuning the sensitivity of differntiating between MSG-N vs MSG-(N+1) events (default is 1).
+    is_complex : bool
+        True value will use complex Morlet wavelet (default is False).
+    is_mf : bool
+        If True, wavelet is used as a matched filter (doesn't have the side negative peaks) (default is False).
+    dx : float
+        The sampling step size (default is 1).
+    Returns
+    -------
+    cwt : dict
+        Dictionary of CWT coefficients matrices calculated for each wavelet.
+    wavelete : dict
+        Dictionary of generated wavelet functions at provided scales.
+    """
     wvlts = {wavelet:{} for wavelet in wavelets}
+    wvlts['scales'] = scales
     if use_scratch:
         try:
             _cwt = h5py.File("cwt.scratch", "w")
@@ -155,25 +290,25 @@ def cwt(data, scales, wavelets, use_scratch=True, show_wavelets=False):
     if show_wavelets:
         plt.figure()
     for wavelet in wavelets:
-        if wavelet == 'ricker': 
+        if wavelet.lower() == 'ricker': 
             N = 1 
             wvlts[wavelet] = {'N':N, 'w':[ricker(s) for s in scales]}
-        elif wavelet[:4] == 'msg-':
+        elif wavelet[:4].lower() == 'msg-':
             N = int(wavelet[4:]) 
             wvlts[wavelet] = {'N':N, 'w':[msg(s, N=N, mod=0.8, shift=1, skewness=0.5) for s in scales]} 
-        elif wavelet[:5] == 'msge-':
+        elif wavelet[:5].lower() == 'msge-':
             N = len(wavelet[5:]) 
             wvlts[wavelet] = {'N':N, 'w':[msg_encoded(s, pattern=wavelet[5:], mod=1.5, shift=-2.9, skewness=0.04) for s in scales]}
-        elif wavelet[:7] == 'morlet-':
+        elif wavelet[:7].lower() == 'morlet-':
             N = int(wavelet[7:]) 
             wvlts[wavelet] = {'N':N, 'w':[morlet(s, N=N, is_complex=False) for s in scales]}
-        elif wavelet[:8] == 'cmorlet-':
+        elif wavelet[:8].lower() == 'cmorlet-':
             N = int(wavelet[8:])
-    #         print(N)
             wvlts[wavelet] = {'N':N, 'w':[morlet(s, N=N, is_complex=True) for s in scales]}
+        else:
+            raise ValueError('please use proper wavelet names.')
         if show_wavelets:
             plt.plot(wvlts[wavelet]['w'][0],label=wavelet)
-#         print(len(wvlts[wavelet]['w'][0]))
         if use_scratch:
             _cwt.create_dataset(wavelet, (len(data),len(wvlts[wavelet]['w'])), chunks=True, dtype='float', compression="gzip")
             if np.iscomplexobj(wvlts[wavelet]['w'][0]):
@@ -181,13 +316,10 @@ def cwt(data, scales, wavelets, use_scratch=True, show_wavelets=False):
                     _l = floor(min(len(data),len(w))/2)
                     _r = min(len(data),len(w))-_l-1
                     _cwt[wavelet][_l:-_r,n] = np.abs(convolve(data, w, mode='valid')) 
-        #             _cwt[:,n] = (0.5*np.correlate(data, w, mode='same')) 
-        #             _cwt[:,n] += np.abs(_cwt[:,n])      
             else:
                 for n, w in enumerate(wvlts[wavelet]['w']):
                     _l = floor(min(len(data),len(w))/2)
                     _r = min(len(data),len(w))-_l-1
-            #         _cwt[:,n] = np.abs(np.correlate(data, w, mode='same')) 
                     _cwt[wavelet][_l:-_r,n] = (0.5*convolve(data, w, mode='valid')) 
                     _cwt[wavelet][:,n] += np.abs(_cwt[wavelet][:,n])
         else:
@@ -197,27 +329,48 @@ def cwt(data, scales, wavelets, use_scratch=True, show_wavelets=False):
                     _l = floor(min(len(data),len(w))/2)
                     _r = min(len(data),len(w))-_l-1
                     _cwt[wavelet][_l:-_r,n] = np.abs(convolve(data, w, mode='valid')) 
-        #             _cwt[:,n] = (0.5*np.correlate(data, w, mode='same')) 
-        #             _cwt[:,n] += np.abs(_cwt[:,n])      
             else:
                 for n, w in enumerate(wvlts[wavelet]['w']):
                     _l = floor(min(len(data),len(w))/2)
                     _r = min(len(data),len(w))-_l-1
-            #         _cwt[:,n] = np.abs(np.correlate(data, w, mode='same')) 
                     _cwt[wavelet][_l:-_r,n] = (0.5*convolve(data, w, mode='valid')) 
                     _cwt[wavelet][:,n] += np.abs(_cwt[wavelet][:,n])
     if show_wavelets:
         plt.legend()
         plt.show()
     return _cwt, wvlts
-def local_maxima(cwt, wavelets, scales, threshold, macro_clusters=True, use_scratch=True, extent=1):
+def local_maxima(cwt, wavelets, threshold, macro_clusters=True, use_scratch=True, extent=1):
+    """ Finds and extract local maxima at each scale from CWT coefficients. 
+    This is used for the outputs of the cwt() function.
+    Parameters
+    ----------
+    cwt : dict
+        Dictionary of CWT coefficients using cwt() function.
+    wavelets : dict
+        Dictionary of generated wavelets using cwt() function.
+    threshold : float
+        Threshold for the local maxima detection. It is a value in CWT coefficients domain.
+    macro_cluster : bool
+        Use macro clustering step to split original candidate events (local maxima points) into 
+        macro-clusters. Useful to speed-up in the next step of event filteration (micro-clustering).
+        (default is True)
+    use_scratch : bool
+        Read CWT coefficients from the scratch file on disk (hdf5 format). File name must be 'cwt.scratch'.
+        (default is True).
+    extent : float
+        Extension/spreading of events merging distance in x/time axis for macro-cluster forming purposes (default is 1).
+    Returns
+    -------
+    local maxima : list of ndarray of dtype([('time', 'f8'), ('scale', 'f8'), ('coeff', 'f8'), ('N', 'f8')])
+        List of array(s) of local maxima events.
+    """
     all_events = np.empty((0,), dtype=d_type)
     if use_scratch:
         cwt = h5py.File('cwt.scratch', 'r')
     for wavelet,wvlts in wavelets.items():
         for n, w in enumerate(wvlts['w']):
-            _index, _ = find_peaks(cwt[wavelet][:,n], distance=wvlts['N']*scales[n], height=threshold)
-            all_events = np.append(all_events, np.array(list(zip((_index), [scales[n]]*len(_index), cwt[wavelet][_index,n], [wvlts['N']]*len(_index))), dtype=d_type), axis=0)
+            _index, _ = find_peaks(cwt[wavelet][:,n], distance=wvlts['N']*wavelets['scales'][n], height=threshold)
+            all_events = np.append(all_events, np.array(list(zip((_index), [wavelets['scales'][n]]*len(_index), cwt[wavelet][_index,n], [wvlts['N']]*len(_index))), dtype=d_type), axis=0)
     if macro_clusters:
         all_events_t_l = all_events['time']-0.5*extent*np.multiply(all_events['N'],all_events['scale']) 
         _index_l = np.argsort(all_events_t_l) 
@@ -234,6 +387,34 @@ def local_maxima(cwt, wavelets, scales, threshold, macro_clusters=True, use_scra
             cwt.close()        
         return [all_events]
 def cwt_local_maxima(data,scales,wavelets,threshold,macro_clusters=True,show_wavelets=False,extent=1):
+    """ Finds and extract local maxima at each scale while calculating CWT coefficients. 
+    This is the integrated version of cwt() and local_maxima() function applied on input signal.
+    Parameters
+    ----------
+    data : array_like
+        Array to calculate CWT coefficients.
+    scales : array_like
+        Array of scale values.
+    wavelets : list of str
+        List of wavelet function names available in 
+        PCWA ('ricker','morlet-N', 'cmorlet-N', 'msg-N', 'msge-#') 
+        where N is the number of peaks for multi-peak signals.
+        # for msge wavelet is the encoding string. i.e. msge-F08
+    threshold : float
+        Threshold for the local maxima detection. It is a value in CWT coefficients domain.
+    macro_cluster : bool
+        Use macro clustering step to split original candidate events (local maxima points) into 
+        macro-clusters. Useful to speed-up in the next step of event filteration (micro-clustering).
+        (default is True)
+    show_wavelets : bool
+        Plots a sample of wavelet functions for confirmation purposes (default is False).
+    extent : float
+        Extension/spreading of events merging distance in x/time axis for macro-cluster forming purposes (default is 1).
+    Returns
+    -------
+    local maxima : list of ndarray of dtype([('time', 'f8'), ('scale', 'f8'), ('coeff', 'f8'), ('N', 'f8')])
+        List of array(s) of local maxima events.
+    """
     all_events = np.empty((0,), dtype=d_type)
     wvlts = {wavelet:{} for wavelet in wavelets}
     if show_wavelets:
@@ -253,29 +434,22 @@ def cwt_local_maxima(data,scales,wavelets,threshold,macro_clusters=True,show_wav
             wvlts[wavelet] = {'N':N, 'w':[morlet(s, N=N, is_complex=False) for s in scales]}
         elif wavelet[:8] == 'cmorlet-':
             N = int(wavelet[8:])
-    #         print(N)
             wvlts[wavelet] = {'N':N, 'w':[morlet(s, N=N, is_complex=True) for s in scales]}
         if show_wavelets:
             plt.plot(wvlts[wavelet]['w'][0],label=wavelet)
-#         print(len(wvlts[wavelet]['w'][0]))
-                # _cwt[wavelet] = np.zeros((len(data),len(wvlts[wavelet]['w'])))
         if np.iscomplexobj(wvlts[wavelet]['w'][0]):
             for n, w in enumerate(wvlts[wavelet]['w']):
                 _l = floor(min(len(data),len(w))/2)
                 _cwt = np.abs(convolve(data, w, mode='valid')) 
                 _index, _ = find_peaks(_cwt, distance=wvlts[wavelet]['N']*scales[n], height=threshold)
                 all_events = np.append(all_events, np.array(list(zip((_index+_l), [scales[n]]*len(_index), _cwt[_index], [wvlts[wavelet]['N']]*len(_index))), dtype=d_type), axis=0)
-    #             _cwt[:,n] = (0.5*np.correlate(data, w, mode='same')) 
-    #             _cwt[:,n] += np.abs(_cwt[:,n])      
         else:
             for n, w in enumerate(wvlts[wavelet]['w']):
                 _l = floor(min(len(data),len(w))/2)
-        #         _cwt[:,n] = np.abs(np.correlate(data, w, mode='same')) 
                 _cwt = (0.5*convolve(data, w, mode='valid')) 
                 _cwt += np.abs(_cwt)
                 _index, _ = find_peaks(_cwt, distance=wvlts[wavelet]['N']*scales[n], height=threshold)
                 all_events = np.append(all_events, np.array(list(zip((_index+_l), [scales[n]]*len(_index), _cwt[_index], [wvlts[wavelet]['N']]*len(_index))), dtype=d_type), axis=0)
-                # print(_index)
     if show_wavelets:
         plt.legend()
         plt.show()
@@ -290,8 +464,25 @@ def cwt_local_maxima(data,scales,wavelets,threshold,macro_clusters=True,show_wav
         return _mc
     else:
         return [all_events]
-def ucluster(args):
-    events, selectivity, w, h = args
+def ucluster(events, selectivity, w, h):
+    """ Finds and extract micro-clusters from the the array of local-maxima (events).
+    It forms clusters by finding nearby events using euclidean distance, coefficient value of centroid point,
+    and spreading weights along x/y-axis.
+    Parameters
+    ----------
+    events : array_like
+        Array to events (local maxima).
+    selectivity : float
+        Minimum number of events required to form a micro-cluster.
+    w : float
+        Spreading weight in x (time) axis.
+    h : float
+        Spreading weight in y (scale) axis.
+    Returns
+    -------
+    events : array_like of dtype([('time', 'f8'), ('scale', 'f8'), ('coeff', 'f8'), ('N', 'f8')])
+        Array of selected event(s) found in the given input events list (macro-cluster).
+    """
     selected_events = []
     events = np.sort(events,order='coeff')[::-1]
     while(len(events) > selectivity):
@@ -314,23 +505,27 @@ def ucluster(args):
     
 def tprfdr(t,d,e=1,MS=False):
     """
-        Calculate TPR and FDR values for general and mass-spectroscopy data
-        ----------
-        t : list, ndarray
-            true location
-        d : list, ndarray
-            detected location
-        e : float
-            acceptable error range (tolerance) to consider an event as true event. 
-            If MS=0, e value is abslute
-            if MS=1, e is relative to location
-        MS: bool
-            set true if used for mass spectroscopy data.
-        Returns
-        -------
-        tpr, fdr: (2,) float
-            TPR and FDR values
-        """
+    Calculate TPR and FDR values for general/mass-spectroscopy detected events.
+    Parameters
+    ----------
+    t : array_like
+        Ground truth location
+    d : array_like
+        Detected location
+    e : float
+        Acceptable error range (tolerance) to consider an event as true event. 
+        if MS=0, e value is abslute
+        if MS=1, e is relative to location
+        (deafult is 1)
+    MS: bool
+        Set true if used for mass spectroscopy data (default is False).
+    Returns
+    -------
+    tpr : float
+        TPR value
+    fdr : float
+        FDR value
+    """
     tp = []
     D = len(d)
     if MS: MS = 1
@@ -343,21 +538,21 @@ def tprfdr(t,d,e=1,MS=False):
                 tp.append(np.min(d-tr))
                 d = np.delete(d, np.abs(np.argmin(d-tr).flatten()[0]))
         except Exception as excpt:
-#             print(excpt)
+            print(excpt)
             pass
-#     print(f'TPR: {tpr:.3f}\nFDR: {fdr:.3f}')
     tpr = len(tp)/len(t)
     fdr = (D-len(tp))/D
     return tpr, fdr
 
 class PCWA:
-    def __init__(self,dt=1,parallel=False,mcluster=True,logscale=True,wavelet=['ricker'],scales=[10,100,30],selectivity=0.3,w=2,h=6,extent=1,trace=None,show_wavelets=False,update_cwt=True,keep_cwt=False,usescratchfile=False):
-        self.dt = dt
+    def __init__(self,dx=1,parallel=False,mcluster=True,logscale=True,wavelet=['ricker'],scales=[10,100,30],selectivity=0.3,w=2,h=6,extent=1,trace=None,show_wavelets=False,update_cwt=True,keep_cwt=False,usescratchfile=False):
+        self.dx = dx
         self.parallel = parallel
         self.mcluster = mcluster
         self.logscale = logscale
         self.wavelet = wavelet
-        self.scales = scales
+        self.scales_range = scales
+        self.scales_arr = None
         self.selectivity = selectivity
         self.w, self.h = w, h
         self.extent = extent
@@ -372,20 +567,21 @@ class PCWA:
         
     def detect_events(self,threshold, trace=None, wavelet=None, scales=None):
         """
-        Detect events using the PCWA object with entered parameters.
+        Detect events using the PCWA algorithm.
         Parameters
         ----------
-        threshold : number
+        threshold : float
             threshold (height) used to find initial local maxima.
-        trace : list, ndarray or pandas.Series
-            Raw data to detect events in.
-        wavelet : string or list of strings
+        trace : array_like, None
+            Input signal to detect events. It will overwrite the class value defined for PCWA.trace. (default is None).
+        wavelet : list of strings
             Name of the wavelet function(s) to calculate CWT coefficients. Currently acceptable values are:
             'ricker', 'msg-N', msge-w0w1w2...', 'morlet-N', 'cmorlet-N'
             N: is the number of peaks in a multi-peak wavelet, i.e. msg-8 contains 8 peaks. 
-            msge is encoded version of msg where the weight of individual peaks are given as a series of hex numbers. i.e. msge-F8A2 is a msg wavelet with first peak height being 8 times the last peak.
-        scales: [float, float, int]
-            [minimum, maximum, count] of scales. Scale values are in dt scale.
+            msge is encoded version of msg where the weight of individual peaks are given as a series of hex numbers. 
+            i.e. msge-F8A2 is a msg wavelet with first peak height being 8 times the last peak.
+        scales: list
+            [minimum, maximum, count] of scales. Scale values are in dx scale. Will overwrite pcwa.scales_arr parameter.
         Returns
         -------
         events : ndarray with dtype([('time', 'f8'), ('scale', 'f8'), ('coeff', 'f8'), ('N', 'f8')])
@@ -400,24 +596,23 @@ class PCWA:
         if wavelet != None:
             self.wavelet = wavelet
         if scales != None:
-            self.scales = scales
-        if self.logscale:
-            _scales = np.logspace(np.log10(self.scales[0]), np.log10(self.scales[1]), self.scales[2], dtype=np.float64)/self.dt
-        else:
-            _scales = np.linspace(self.scales[0], self.scales[1], self.scales[2], dtype=np.float64)/self.dt
+            self.scales_range = scales
+            if self.logscale:
+                self.scales_arr = np.logspace(np.log10(self.scales_range[0]), np.log10(self.scales_range[1]), int(self.scales_range[2]), dtype=np.float64)/self.dx
+            else:
+                self.scales_arr = np.linspace(self.scales_range[0], self.scales_range[1], int(self.scales_range[2]), dtype=np.float64)/self.dx
+        if self.scales_arr == None:
+            raise RuntimeError('Please set pcwa.scales_arr or provide proper scales.')
         if type(self.wavelet) != list:
             self.wavelet = [self.wavelet]
         selected_events = []
-#         print(self.wavelet)
         if self.parallel:
             with mp.Pool(mp.cpu_count()) as pool:
                 if self.update_cwt:
                     self.cwt, self.wavelets = {}, {}
-                    self.cwt, self.wavelets = cwt(self.trace, _scales, self.wavelet, show_wavelets=self.show_wavelets)
-                clusters = local_maxima(self.cwt,self.wavelets,_scales,threshold,self.mcluster,self.extent)
-                args = ((cluster,int(len(_scales)*self.selectivity),self.w,self.h) for cluster in clusters)
-            #         for n,island in enumerate(islands): 
-            #             selected_events.append(select_events(island,selectivity,w,h))
+                    self.cwt, self.wavelets = cwt(self.trace, self.scales_arr, self.wavelet, show_wavelets=self.show_wavelets)
+                clusters = local_maxima(self.cwt,self.wavelets,self.scales_arr,threshold,self.mcluster,self.extent)
+                args = ((cluster,int(len(self.scales_arr)*self.selectivity),self.w,self.h) for cluster in clusters)
                 r = pool.map_async(ucluster, args, chunksize=100)
                 [selected_events.append(e) for e in r.get()]
                 self.events = np.concatenate(tuple(selected_events),axis=0)
@@ -425,14 +620,11 @@ class PCWA:
             if self.keep_cwt:
                 if self.update_cwt:
                     self.cwt, self.wavelets = {}, {}
-                    self.cwt, self.wavelets = cwt(self.trace, _scales, self.wavelet, show_wavelets=self.show_wavelets, use_scratch=self.usescratchfile)
-                clusters = local_maxima(self.cwt,self.wavelets,_scales,threshold,self.mcluster,self.usescratchfile,self.extent)
-            #         for n,island in enumerate(islands): 
-            #             selected_events.append(select_events(island,selectivity,w,h))
+                    self.cwt, self.wavelets = cwt(self.trace, self.scales_arr, self.wavelet, show_wavelets=self.show_wavelets, use_scratch=self.usescratchfile)
+                clusters = local_maxima(self.cwt,self.wavelets,self.scales_arr,threshold,self.mcluster,self.usescratchfile,self.extent)
             else:
-                clusters = cwt_local_maxima(self.trace,_scales,self.wavelet,threshold,self.mcluster,self.show_wavelets,self.extent)
-            # print(len(clusters))
-            args = ((cluster,int(len(_scales)*self.selectivity),self.w,self.h) for cluster in clusters)
+                clusters = cwt_local_maxima(self.trace,self.scales_arr,self.wavelet,threshold,self.mcluster,self.show_wavelets,self.extent)
+            args = ((cluster,int(len(self.scales_arr)*self.selectivity),self.w,self.h) for cluster in clusters)
             for e in map(ucluster, args):
                 selected_events.append(e)
             self.events = np.concatenate(tuple(selected_events),axis=0)
