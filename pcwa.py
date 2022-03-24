@@ -10,6 +10,8 @@ import time
 import matplotlib.pyplot as plt
 import multiprocessing as mp
 
+d_type = np.dtype([('time', 'f8'), ('scale', 'f8'), ('coeff', 'f8'), ('N', 'f8')])
+eps = 1.0e-12
 
 #================================= Wavelet functions =================================#
 def ricker(scale=10, window=1, dx=1):
@@ -240,7 +242,6 @@ def msg_encoded(scale=10, pattern='F08', window=1, mod=0.5, shift=1, skewness=1,
     return s
 
 #============================== CWT and Event Detection ==============================#
-d_type = np.dtype([('time', 'f8'), ('scale', 'f8'), ('coeff', 'f8'), ('N', 'f8')])
 def cwt(data, scales, wavelets, use_scratch=True, show_wavelets=False):
     """ Calculates CWT coefficients for the input data based on the list of 
     wavelet functions and scales provided.
@@ -492,7 +493,7 @@ def ucluster(events, selectivity, w, h):
         _c_0, _c_i = events['coeff'][0], events['coeff'] 
         _dt = _t_0 - _t_i 
         _ds = _s_0 - _s_i 
-        _theta_i = np.arctan(_ds/_dt) 
+        _theta_i = np.arctan(_ds/(_dt+eps)) 
         _dist_square = _dt**2 + _ds**2 
         _r_0 = (w*h*_n_0*_s_0)/np.sqrt((w*_n_0*np.sin(_theta_i))**2+(h*np.cos(_theta_i))**2) 
         _r_i = (w*h*_n_i*_s_i)/np.sqrt((w*_n_i*np.sin(_theta_i))**2+(h*np.cos(_theta_i))**2)*np.sqrt((_c_i-_c_i[-1])/(_c_0-_c_i[-1]))
@@ -502,6 +503,18 @@ def ucluster(events, selectivity, w, h):
         events = np.delete(events,_adjacency)
     return np.array(selected_events, dtype=d_type)
 
+def ucluster_map(args):
+    """ A wrapper function to use ucluster with map().
+    Parameters
+    ----------
+    args : iterable
+        Iterable list/dict of arguments
+    Returns
+    -------
+    events : array_like of dtype([('time', 'f8'), ('scale', 'f8'), ('coeff', 'f8'), ('N', 'f8')])
+        Array of selected event(s) found in the given input events list (macro-cluster).
+    """
+    return ucluster(*args)
     
 def tprfdr(t,d,e=1,MS=False):
     """
@@ -602,7 +615,13 @@ class PCWA:
             else:
                 self.scales_arr = np.linspace(self.scales_range[0], self.scales_range[1], int(self.scales_range[2]), dtype=np.float64)/self.dx
         if self.scales_arr == None:
-            raise RuntimeError('Please set pcwa.scales_arr or provide proper scales.')
+            if self.scales_range == None:
+                raise RuntimeError('Please set pcwa.scales_arr or provide proper scales.')
+            else:
+                if self.logscale:
+                    self.scales_arr = np.logspace(np.log10(self.scales_range[0]), np.log10(self.scales_range[1]), int(self.scales_range[2]), dtype=np.float64)/self.dx
+                else:
+                    self.scales_arr = np.linspace(self.scales_range[0], self.scales_range[1], int(self.scales_range[2]), dtype=np.float64)/self.dx
         if type(self.wavelet) != list:
             self.wavelet = [self.wavelet]
         selected_events = []
@@ -624,8 +643,8 @@ class PCWA:
                 clusters = local_maxima(self.cwt,self.wavelets,self.scales_arr,threshold,self.mcluster,self.usescratchfile,self.extent)
             else:
                 clusters = cwt_local_maxima(self.trace,self.scales_arr,self.wavelet,threshold,self.mcluster,self.show_wavelets,self.extent)
-            args = ((cluster,int(len(self.scales_arr)*self.selectivity),self.w,self.h) for cluster in clusters)
-            for e in map(ucluster, args):
+            args = [(cluster,int(len(self.scales_arr)*self.selectivity),self.w,self.h) for cluster in clusters]
+            for e in map(ucluster_map, args):
                 selected_events.append(e)
             self.events = np.concatenate(tuple(selected_events),axis=0)
         return self.events
