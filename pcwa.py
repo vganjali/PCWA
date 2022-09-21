@@ -10,7 +10,7 @@ import time
 import matplotlib.pyplot as plt
 import multiprocessing as mp
 
-d_type = np.dtype([('time', 'f8'), ('scale', 'f8'), ('coeff', 'f8'), ('N', 'f8')])
+d_type = np.dtype([('loc', 'u8'), ('scale', 'f8'), ('coeff', 'f8'), ('N', 'f8')])
 eps = 1.0e-12
 
 #================================= Wavelet functions =================================#
@@ -362,7 +362,7 @@ def local_maxima(cwt, wavelets, threshold, macro_clusters=True, use_scratch=True
         Extension/spreading of events merging distance in x/time axis for macro-cluster forming purposes (default is 1).
     Returns
     -------
-    local maxima : list of ndarray of dtype([('time', 'f8'), ('scale', 'f8'), ('coeff', 'f8'), ('N', 'f8')])
+    local maxima : list of ndarray of dtype([('loc', 'u8'), ('scale', 'f8'), ('coeff', 'f8'), ('N', 'f8')])
         List of array(s) of local maxima events.
     """
     all_events = np.empty((0,), dtype=d_type)
@@ -373,9 +373,9 @@ def local_maxima(cwt, wavelets, threshold, macro_clusters=True, use_scratch=True
             _index, _ = find_peaks(cwt[wavelet][:,n], distance=wvlts['N']*wavelets['scales'][n], height=threshold)
             all_events = np.append(all_events, np.array(list(zip((_index), [wavelets['scales'][n]]*len(_index), cwt[wavelet][_index,n], [wvlts['N']]*len(_index))), dtype=d_type), axis=0)
     if macro_clusters:
-        all_events_t_l = all_events['time']-0.5*extent*np.multiply(all_events['N'],all_events['scale']) 
+        all_events_t_l = all_events['loc']-0.5*extent*np.multiply(all_events['N'],all_events['scale']) 
         _index_l = np.argsort(all_events_t_l) 
-        all_events_t_r = all_events['time']+0.5*extent*np.multiply(all_events['N'],all_events['scale']) 
+        all_events_t_r = all_events['loc']+0.5*extent*np.multiply(all_events['N'],all_events['scale']) 
         _index_r = np.argsort(all_events_t_r) 
         all_events_overlap = all_events_t_r[_index_r[:-1]]-all_events_t_l[_index_l[1:]] 
         _slices = np.argwhere(all_events_overlap <= 0).flatten()+1 
@@ -413,7 +413,7 @@ def cwt_local_maxima(data,scales,wavelets,threshold,macro_clusters=True,show_wav
         Extension/spreading of events merging distance in x/time axis for macro-cluster forming purposes (default is 1).
     Returns
     -------
-    local maxima : list of ndarray of dtype([('time', 'f8'), ('scale', 'f8'), ('coeff', 'f8'), ('N', 'f8')])
+    local maxima : list of ndarray of dtype([('loc', 'u8'), ('scale', 'f8'), ('coeff', 'f8'), ('N', 'f8')])
         List of array(s) of local maxima events.
     """
     all_events = np.empty((0,), dtype=d_type)
@@ -455,9 +455,9 @@ def cwt_local_maxima(data,scales,wavelets,threshold,macro_clusters=True,show_wav
         plt.legend()
         plt.show()
     if macro_clusters:
-        all_events_t_l = all_events['time']-0.5*extent*np.multiply(all_events['N'],all_events['scale']) 
+        all_events_t_l = all_events['loc']-0.5*extent*np.multiply(all_events['N'],all_events['scale']) 
         _index_l = np.argsort(all_events_t_l) 
-        all_events_t_r = all_events['time']+0.5*extent*np.multiply(all_events['N'],all_events['scale']) 
+        all_events_t_r = all_events['loc']+0.5*extent*np.multiply(all_events['N'],all_events['scale']) 
         _index_r = np.argsort(all_events_t_r) 
         all_events_overlap = all_events_t_r[_index_r[:-1]]-all_events_t_l[_index_l[1:]] 
         _slices = np.argwhere(all_events_overlap <= 0).flatten()+1 
@@ -481,14 +481,14 @@ def ucluster(events, selectivity, w, h):
         Spreading weight in y (scale) axis.
     Returns
     -------
-    events : array_like of dtype([('time', 'f8'), ('scale', 'f8'), ('coeff', 'f8'), ('N', 'f8')])
+    events : array_like of dtype([('loc', 'u8'), ('scale', 'f8'), ('coeff', 'f8'), ('N', 'f8')])
         Array of selected event(s) found in the given input events list (macro-cluster).
     """
     selected_events = []
     events = np.sort(events,order='coeff')[::-1]
     while(len(events) > selectivity):
         _n_0, _n_i = events['N'][0], events['N'] 
-        _t_0, _t_i = events['time'][0], events['time'] 
+        _t_0, _t_i = events['loc'][0], events['loc'] 
         _s_0, _s_i = events['scale'][0], events['scale'] 
         _c_0, _c_i = events['coeff'][0], events['coeff'] 
         _dt = _t_0 - _t_i 
@@ -511,7 +511,7 @@ def ucluster_map(args):
         Iterable list/dict of arguments
     Returns
     -------
-    events : array_like of dtype([('time', 'f8'), ('scale', 'f8'), ('coeff', 'f8'), ('N', 'f8')])
+    events : array_like of dtype([('loc', 'u8'), ('scale', 'f8'), ('coeff', 'f8'), ('N', 'f8')])
         Array of selected event(s) found in the given input events list (macro-cluster).
     """
     return ucluster(*args)
@@ -558,7 +558,7 @@ def tprfdr(t,d,e=1,MS=False):
     return tpr, fdr
 
 class PCWA:
-    def __init__(self,dx=1,parallel=False,mcluster=True,logscale=True,wavelet=['ricker'],scales=[10,100,30],selectivity=0.3,w=2,h=6,extent=1,trace=None,show_wavelets=False,update_cwt=True,keep_cwt=False,usescratchfile=False):
+    def __init__(self,dx=1,parallel=False,mcluster=True,logscale=True,wavelet=['ricker'],scales=[10,100,30],selectivity=0.3,w=2,h=6,extent=1,trace=None,show_wavelets=False,update_cwt=True,keep_cwt=False,use_scratchfile=False):
         self.dx = dx
         self.parallel = parallel
         self.mcluster = mcluster
@@ -573,7 +573,7 @@ class PCWA:
         self.events = []
         self.show_wavelets = show_wavelets
         self.update_cwt = update_cwt
-        self.usescratchfile = usescratchfile
+        self.use_scratchfile = use_scratchfile
         self.keep_cwt = keep_cwt
         self.cwt = {}
         self.wavelets = {}
@@ -597,7 +597,7 @@ class PCWA:
             [minimum, maximum, count] of scales. Scale values are in dx scale. Will overwrite pcwa.scales_arr parameter.
         Returns
         -------
-        events : ndarray with dtype([('time', 'f8'), ('scale', 'f8'), ('coeff', 'f8'), ('N', 'f8')])
+        events : ndarray with dtype([('loc', 'u8'), ('scale', 'f8'), ('coeff', 'f8'), ('N', 'f8')])
             Array including information of detected events.
         """
         if type(trace) in [list, np.ndarray, pd.Series]:
@@ -639,8 +639,8 @@ class PCWA:
             if self.keep_cwt:
                 if self.update_cwt:
                     self.cwt, self.wavelets = {}, {}
-                    self.cwt, self.wavelets = cwt(self.trace, self.scales_arr, self.wavelet, show_wavelets=self.show_wavelets, use_scratch=self.usescratchfile)
-                clusters = local_maxima(self.cwt,self.wavelets,self.scales_arr,threshold,self.mcluster,self.usescratchfile,self.extent)
+                    self.cwt, self.wavelets = cwt(self.trace, self.scales_arr, self.wavelet, show_wavelets=self.show_wavelets, use_scratch=self.use_scratchfile)
+                clusters = local_maxima(self.cwt,self.wavelets,self.scales_arr,threshold,self.mcluster,self.use_scratchfile,self.extent)
             else:
                 clusters = cwt_local_maxima(self.trace,self.scales_arr,self.wavelet,threshold,self.mcluster,self.show_wavelets,self.extent)
             args = [(cluster,int(len(self.scales_arr)*self.selectivity),self.w,self.h) for cluster in clusters]
