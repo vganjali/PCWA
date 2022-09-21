@@ -22,7 +22,7 @@ pcwa_analyzer = pcwa.PCWA(parallel=False)
 # pcwa_analyzer.show_wavelets = True
 pcwa_analyzer.w, pcwa_analyzer.h = 1.5, 1.5
 pcwa_analyzer.selectivity = 0.7
-pcwa_analyzer.usescratchfile = False
+pcwa_analyzer.use_scratchfile = False
 ```
 properties can be set during or after initializing. A list of properties are as below:
 
@@ -45,7 +45,7 @@ wavelets = {}                          # dictionary of generated scaled&normaliz
 show_wavelets = False                  # plot wavelet functions
 update_cwt = True                      # if False, will use the current cwt coefficients to detect events to save time tuning threshold parameters
 keep_cwt = False                       # if False, will use less memory by running conv() and local_maxima() at the same time. Otherwise will generate entire CWT coefficient before looking for local maxima (conventional method)
-usescratchfile = False                 # stores cwt coefficients in the scarach file (hdf5 formatted) file
+use_scratchfile = False                 # stores cwt coefficients in the scarach file (hdf5 formatted) file
 ```
 
 ## Event Detection
@@ -53,7 +53,7 @@ After initializing, events can be detected by calling `detect_events()` method.
 
 ```python
 events = pcwa_analyzer.detect_events(trace=data,wavelet=['ricker'],scales=[0.1e-3,1.0e-3,50],threshold=3)
-tpr, fdr = pcwa.tprfdr(truth,events['time'],e=7e-3/1e-5,MS=True) # e is the tolerance of error for event location, here 7ms/0.01ms (in data points), 0.01ms is the bin size
+tpr, fdr = pcwa.tprfdr(truth,events['loc'],e=7e-3/1e-5,MS=True) # e is the tolerance of error for event location, here 7ms/0.01ms (in data points), 0.01ms is the bin size
 ```
 some of pcwa parameters can overridden when calling `detect_events()` by passing the following parameters:
 - `trace`:        overrides the trace
@@ -85,13 +85,13 @@ pcwa_analyzer.wavelet = ['ricker']
 pcwa_analyzer.keep_cwt = False
 pcwa_analyzer.w, pcwa_analyzer.h = 0.2, 1
 pcwa_analyzer.show_wavelets = False
-pcwa_analyzer.usescratchfile = False
+pcwa_analyzer.use_scratchfile = False
 
 # detect events (peaks)
 events = pcwa_analyzer.detect_events(threshold=200)
 
 # fine tune the location of detected peaks
-loc = [int(e-events['scale'][n]+np.argmax(df_raw['Intensity'][int(e-events['scale'][n]):int(e+events['scale'][n])])) for n,e in enumerate(events['time'])]
+loc = [int(e-events['scale'][n]+np.argmax(df_raw['Intensity'][int(e-events['scale'][n]):int(e+events['scale'][n])])) for n,e in enumerate(events['loc'])]
 
 fig, ax = plt.subplots(3,1,figsize=(16,4),dpi=96,sharex=True,gridspec_kw={'height_ratios': [12,1,1]})
 plt.subplots_adjust(hspace=0,wspace=0)
