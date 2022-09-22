@@ -263,7 +263,7 @@ def cwt(data, scales, wavelets, use_scratch=True, show_wavelets=False):
         Plots a sample of wavelet functions for confirmation purposes.
     skewness : float
         The skewness applied for the side negative peaks. 
-        Helps with tuning the sensitivity of differntiating between MSG-N vs MSG-(N+1) events (default is 1).
+        Helps with tuning the sensitivity of differentiating between MSG-N vs MSG-(N+1) events (default is 1).
     is_complex : bool
         True value will use complex Morlet wavelet (default is False).
     is_mf : bool
@@ -353,7 +353,7 @@ def local_maxima(cwt, wavelets, threshold, macro_clusters=True, use_scratch=True
         Threshold for the local maxima detection. It is a value in CWT coefficients domain.
     macro_cluster : bool
         Use macro clustering step to split original candidate events (local maxima points) into 
-        macro-clusters. Useful to speed-up in the next step of event filteration (micro-clustering).
+        macro-clusters. Useful to speed-up in the next step of event distillation (micro-clustering).
         (default is True)
     use_scratch : bool
         Read CWT coefficients from the scratch file on disk (hdf5 format). File name must be 'cwt.scratch'.
@@ -405,7 +405,7 @@ def cwt_local_maxima(data,scales,wavelets,threshold,macro_clusters=True,show_wav
         Threshold for the local maxima detection. It is a value in CWT coefficients domain.
     macro_cluster : bool
         Use macro clustering step to split original candidate events (local maxima points) into 
-        macro-clusters. Useful to speed-up in the next step of event filteration (micro-clustering).
+        macro-clusters. Useful to speed-up in the next step of event distillation (micro-clustering).
         (default is True)
     show_wavelets : bool
         Plots a sample of wavelet functions for confirmation purposes (default is False).
@@ -527,9 +527,9 @@ def tprfdr(t,d,e=1,MS=False):
         Detected location
     e : float
         Acceptable error range (tolerance) to consider an event as true event. 
-        if MS=0, e value is abslute
+        if MS=0, e value is absolute
         if MS=1, e is relative to location
-        (deafult is 1)
+        (default is 1)
     MS: bool
         Set true if used for mass spectroscopy data (default is False).
     Returns
