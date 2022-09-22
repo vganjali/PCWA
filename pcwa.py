@@ -577,6 +577,7 @@ class PCWA:
         self.keep_cwt = keep_cwt
         self.cwt = {}
         self.wavelets = {}
+        self.align_coeff_to_peak = False
         
     def detect_events(self,threshold, trace=None, wavelet=None, scales=None):
         """
@@ -647,4 +648,7 @@ class PCWA:
             for e in map(ucluster_map, args):
                 selected_events.append(e)
             self.events = np.concatenate(tuple(selected_events),axis=0)
+        if self.align_coeff_to_peak:
+            self.events['coeff'] = np.array([max(self.trace[_l-0.5*self.events['N'][n]*self.events['scale'][n]:_l+0.5*self.events['N'][n]*self.events['scale'][n]]) \
+                for _l,n in enumerate(self.events['loc'])],dtype=self.events['coeff'].dtype)
         return self.events
