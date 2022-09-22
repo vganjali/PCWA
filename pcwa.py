@@ -119,14 +119,14 @@ def msg(scale=10, N=6, window=1, mplx_ratio=[1], mod=0.5, shift=1, skewness=1, i
     Window : float
         The length of wavelet, can extend or crop the wavelet function on both sides (default is 1).
     mplx_ratio : list of floats, optional
-        The ratio of MSG signal multiplexing (weigth of each MSG signal) (default is [1]).
+        The ratio of MSG signal multiplexing (weight of each MSG signal) (default is [1]).
     mod : float
         Modulation ratio of peak width vs the gap between subsequent peaks (default is 0.5).
     shift : float
         The shift of side negative peaks from the last positive peaks on each end (default is 1).
     skewness : float
         The skewness applied for the side negative peaks. 
-        Helps with tuning the sensitivity of differntiating between MSG-N vs MSG-(N+1) events (default is 1).
+        Helps with tuning the sensitivity of differentiating between MSG-N vs MSG-(N+1) events (default is 1).
     is_complex : bool
         True value will use complex Morlet wavelet (default is False).
     is_mf : bool
@@ -194,7 +194,7 @@ def msg_encoded(scale=10, pattern='F08', window=1, mod=0.5, shift=1, skewness=1,
         The shift of side negative peaks from the last positive peaks on each end (default is 1).
     skewness : float
         The skewness applied for the side negative peaks. 
-        Helps with tuning the sensitivity of differntiating between MSG-N vs MSG-(N+1) events (default is 1).
+        Helps with tuning the sensitivity of differentiating between MSG-N vs MSG-(N+1) events (default is 1).
     is_complex : bool
         True value will use complex Morlet wavelet (default is False).
     is_mf : bool
