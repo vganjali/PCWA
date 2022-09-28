@@ -660,7 +660,10 @@ class PCWA:
             return
         if ax == None:
             fig,ax = plt.subplots(max(1,N//5),max(1,N%5),figsize=(3*max(1,N%5),2*max(1,N//5)))
-        ax = ax.flatten()
+        if N == 1:
+            ax = [ax]
+        else:
+            ax = ax.flatten()
         for n,e in enumerate(events):
             _win = int(0.75*self.events[e]['N']*self.events[e]['scale'])
             _t = np.arange(int(self.events[e]['loc']-_win),int(self.events[e]['loc']+_win))*self.dx

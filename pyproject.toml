@@ -1,6 +1,6 @@
 [project]
 name = "pcwa"
-version = "0.0.7"
+version = "0.0.8"
 authors = [
   { name="Vahid Ganjalizadeh", email="vganjali@ucsc.edu" },
   { name="Holger Schmidt", email="hschmidt@ucsc.edu" },
