@@ -649,7 +649,7 @@ class PCWA:
             self.events = np.concatenate(tuple(selected_events),axis=0)
         return self.events
     
-    def view_event(self,events,ax=None):
+    def view_events(self,events,ax=None):
         if type(events) == list:
             N = len(events)
         elif type(events) == int:
