@@ -290,7 +290,7 @@ def cwt(data, scales, wavelets, use_scratch=True, show_wavelets=False):
         _cwt = {wavelet:[] for wavelet in wavelets}
     if show_wavelets:
         plt.figure()
-    for wavelet in wavelets:
+    for k,wavelet in enumerate(wavelets):
         if wavelet.lower() == 'ricker': 
             N = 1 
             wvlts[wavelet] = {'N':N, 'w':[ricker(s) for s in scales]}
@@ -368,10 +368,12 @@ def local_maxima(cwt, wavelets, threshold, macro_clusters=True, use_scratch=True
     all_events = np.empty((0,), dtype=d_type)
     if use_scratch:
         cwt = h5py.File('cwt.scratch', 'r')
+    k = 0
     for wavelet,wvlts in wavelets.items():
         for n, w in enumerate(wvlts['w']):
             _index, _ = find_peaks(cwt[wavelet][:,n], distance=wvlts['N']*wavelets['scales'][n], height=threshold)
-            all_events = np.append(all_events, np.array(list(zip((_index), [wavelets['scales'][n]]*len(_index), cwt[wavelet][_index,n], [wvlts['N']]*len(_index), [n]*len(_index))), dtype=d_type), axis=0)
+            all_events = np.append(all_events, np.array(list(zip((_index), [wavelets['scales'][n]]*len(_index), cwt[wavelet][_index,n], [wvlts['N']]*len(_index), [k]*len(_index))), dtype=d_type), axis=0)
+        k =+ 1
     if macro_clusters:
         all_events_t_l = all_events['loc']-0.5*extent*np.multiply(all_events['N'],all_events['scale']) 
         _index_l = np.argsort(all_events_t_l) 
@@ -420,6 +422,7 @@ def cwt_local_maxima(data,scales,wavelets,threshold,macro_clusters=True,show_wav
     wvlts = {wavelet:{} for wavelet in wavelets}
     if show_wavelets:
         plt.figure()
+    k = 0
     for wavelet in wavelets:
         if wavelet == 'ricker': 
             N = 1 
@@ -443,14 +446,15 @@ def cwt_local_maxima(data,scales,wavelets,threshold,macro_clusters=True,show_wav
                 _l = floor(min(len(data),len(w))/2)
                 _cwt = np.abs(convolve(data, w, mode='valid')) 
                 _index, _ = find_peaks(_cwt, distance=wvlts[wavelet]['N']*scales[n], height=threshold)
-                all_events = np.append(all_events, np.array(list(zip((_index+_l), [scales[n]]*len(_index), _cwt[_index], [wvlts[wavelet]['N']]*len(_index), [n]*len(_index))), dtype=d_type), axis=0)
+                all_events = np.append(all_events, np.array(list(zip((_index+_l), [scales[n]]*len(_index), _cwt[_index], [wvlts[wavelet]['N']]*len(_index), [k]*len(_index))), dtype=d_type), axis=0)
         else:
             for n, w in enumerate(wvlts[wavelet]['w']):
                 _l = floor(min(len(data),len(w))/2)
                 _cwt = (0.5*convolve(data, w, mode='valid')) 
                 _cwt += np.abs(_cwt)
                 _index, _ = find_peaks(_cwt, distance=wvlts[wavelet]['N']*scales[n], height=threshold)
-                all_events = np.append(all_events, np.array(list(zip((_index+_l), [scales[n]]*len(_index), _cwt[_index], [wvlts[wavelet]['N']]*len(_index), [n]*len(_index))), dtype=d_type), axis=0)
+                all_events = np.append(all_events, np.array(list(zip((_index+_l), [scales[n]]*len(_index), _cwt[_index], [wvlts[wavelet]['N']]*len(_index), [k]*len(_index))), dtype=d_type), axis=0)
+        k += 1
     if show_wavelets:
         plt.legend()
         plt.show()
