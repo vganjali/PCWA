@@ -659,7 +659,7 @@ class PCWA:
             print("Wrong value for events. Should be a list of events # or a single integer for event #")
             return
         if ax == None:
-            fig,ax = plt.subplots(N//5,N%5,figsize=(3*(N%5),2*(N//5)))
+            fig,ax = plt.subplots(max(1,N//5),max(1,N%5),figsize=(3*max(1,N%5),2*max(1,N//5)))
         ax = ax.flatten()
         for n,e in enumerate(events):
             _win = int(0.75*self.events[e]['N']*self.events[e]['scale'])
