@@ -649,7 +649,7 @@ class PCWA:
             self.events = np.concatenate(tuple(selected_events),axis=0)
         return self.events
     
-    def view_events(self,events,ax=None):
+    def view_events(self,events,span=1,ax=None):
         if type(events) == list:
             if len(events) == 0:
                 print("events list cannot be empty")
@@ -669,7 +669,7 @@ class PCWA:
         else:
             ax = ax.flatten()
         for n,e in enumerate(events):
-            _win = int(0.75*self.events[e]['N']*self.events[e]['scale'])
+            _win = int(span*self.events[e]['N']*self.events[e]['scale'])
             _t = np.arange(int(self.events[e]['loc']-_win),int(self.events[e]['loc']+_win))*self.dx
             ax[n].plot(_t,self.trace[int(self.events[e]['loc']-_win):int(self.events[e]['loc']+_win)],color='blue')
             ax[n].set_xlabel(f"event #{e}")
