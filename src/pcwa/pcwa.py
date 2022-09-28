@@ -651,6 +651,9 @@ class PCWA:
     
     def view_events(self,events,ax=None):
         if type(events) == list:
+            if len(events) == 0:
+                print("events list cannot be empty")
+                return
             N = len(events)
         elif type(events) == int:
             N = 1
@@ -659,7 +662,8 @@ class PCWA:
             print("Wrong value for events. Should be a list of events # or a single integer for event #")
             return
         if ax == None:
-            fig,ax = plt.subplots(max(1,N//5),max(1,N%5),figsize=(3*max(1,N%5),2*max(1,N//5)))
+            _r,_c = 1+((N-1)//5),min(N,5)
+            fig,ax = plt.subplots(_r,_c,figsize=(3*_c,2*_r))
         if N == 1:
             ax = [ax]
         else:
