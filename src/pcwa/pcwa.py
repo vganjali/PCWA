@@ -662,8 +662,9 @@ class PCWA:
             fig,ax = plt.subplots(N//5,N%5,figsize=(3*(N%5),2*(N//5)))
         ax = ax.flatten()
         for n,e in enumerate(events):
-            _win = int(0.75*e['N']*e['scale'])
-            _t = np.arange(int(e['loc']-_win),int(e['loc']+_win))*self.dx
-            ax[n].plot(_t,self.trace[int(e['loc']-_win):int(e['loc']+_win)],color='blue')
+            _win = int(0.75*self.events[e]['N']*self.events[e]['scale'])
+            _t = np.arange(int(self.events[e]['loc']-_win),int(self.events[e]['loc']+_win))*self.dx
+            ax[n].plot(_t,self.trace[int(self.events[e]['loc']-_win):int(self.events[e]['loc']+_win)],color='blue')
+            ax[n].set_xlabel(f"event #{e}")
         plt.show()
         return fig,ax
