@@ -648,3 +648,22 @@ class PCWA:
                 selected_events.append(e)
             self.events = np.concatenate(tuple(selected_events),axis=0)
         return self.events
+    
+    def view_event(self,events,ax=None):
+        if type(events) == list:
+            N = len(events)
+        elif type(events) == int:
+            N = 1
+            events = [events]
+        else:
+            print("Wrong value for events. Should be a list of events # or a single integer for event #")
+            return
+        if ax == None:
+            fig,ax = plt.subplots(N//5,N%5,figsize=(3*(N%5),2*(N//5)))
+        ax = ax.flatten()
+        for n,e in enumerate(events):
+            _win = int(0.75*e['N']*e['scale'])
+            _t = np.arange(int(e['loc']-_win),int(e['loc']+_win))*self.dx
+            ax[n].plot(_t,self.trace[int(e['loc']-_win):int(e['loc']+_win)],color='blue')
+        plt.show()
+        return fig,ax
