@@ -675,7 +675,7 @@ class PCWA:
         for n,e in enumerate(events):
             _win = int(span*self.events[e]['N']*self.events[e]['scale'])
             _t = np.arange(int(self.events[e]['loc']-_win),int(self.events[e]['loc']+_win))*self.dx
-            ax[n].plot(_t,self.trace[int(self.events[e]['loc']-_win):int(self.events[e]['loc']+_win)],color='blue')
+            ax[n].plot(_t,self.trace[int(self.events[e]['loc']-_win):int(self.events[e]['loc']+_win)],color=f"C{self.events[e]['class']}")
             ax[n].set_xlabel(f"event #{e}")
         plt.show()
         return fig,ax
