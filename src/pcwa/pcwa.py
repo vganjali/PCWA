@@ -644,7 +644,7 @@ class PCWA:
                 if self.update_cwt:
                     self.cwt, self.wavelets = {}, {}
                     self.cwt, self.wavelets = cwt(self.trace, self.scales_arr, self.wavelet, show_wavelets=self.show_wavelets, use_scratch=self.use_scratchfile)
-                clusters = local_maxima(self.cwt,self.wavelets,self.scales_arr,threshold,self.mcluster,self.use_scratchfile,self.extent)
+                clusters = local_maxima(self.cwt,self.wavelets,threshold,self.mcluster,self.use_scratchfile,self.extent)
             else:
                 clusters = cwt_local_maxima(self.trace,self.scales_arr,self.wavelet,threshold,self.mcluster,self.show_wavelets,self.extent)
             args = [(cluster,int(len(self.scales_arr)*self.selectivity),self.w,self.h) for cluster in clusters]
