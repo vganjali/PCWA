@@ -638,7 +638,7 @@ class PCWA:
             raise RuntimeError('Scales are longer than trace, shrink the scale range.')
         if type(self.wavelet) != list:
             self.wavelet = [self.wavelet]
-        self.events_scales_arr = (self.scales_arr>=self.events_scales_range[0])*(self.scales_arr<=self.events_scales_range[1])
+        self.events_scales_arr = (self.scales_arr>=(self.events_scales_range[0]/self.dx))*(self.scales_arr<=(self.events_scales_range[1]/self.dx))
         selected_events = []
         if self.parallel:
             with mp.Pool(mp.cpu_count()) as pool:
