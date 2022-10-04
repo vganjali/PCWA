@@ -242,12 +242,12 @@ def msg_encoded(scale=10, pattern='F08', window=1, mod=0.5, shift=1, skewness=1,
     return s
 
 #============================== CWT and Event Detection ==============================#
-def cwt(data, scales, wavelets, use_scratch=True, show_wavelets=False):
-    """ Calculates CWT coefficients for the input data based on the list of 
+def cwt(trace, scales, wavelets, use_scratch=True, show_wavelets=False):
+    """ Calculates CWT coefficients for the input trace based on the list of 
     wavelet functions and scales provided.
     Parameters
     ----------
-    data : array_like
+    trace : array_like
         Array to calculate CWT coefficients.
     scales : array_like
         Array of scale values.
@@ -277,7 +277,7 @@ def cwt(data, scales, wavelets, use_scratch=True, show_wavelets=False):
     wavelete : dict
         Dictionary of generated wavelet functions at provided scales.
     """
-    wvlts = {wavelet:{} for wavelet in wavelets}
+    wvlts = {'wavelets':{wavelet:{} for wavelet in wavelets}}
     wvlts['scales'] = scales
     if use_scratch:
         try:
@@ -293,54 +293,56 @@ def cwt(data, scales, wavelets, use_scratch=True, show_wavelets=False):
     for k,wavelet in enumerate(wavelets):
         if wavelet.lower() == 'ricker': 
             N = 1 
-            wvlts[wavelet] = {'N':N, 'w':[ricker(s) for s in scales]}
+            wvlts['wavelets'][wavelet] = {'N':N, 'w':[ricker(s) for s in scales]}
         elif wavelet[:4].lower() == 'msg-':
             N = int(wavelet[4:]) 
-            wvlts[wavelet] = {'N':N, 'w':[msg(s, N=N, mod=0.8, shift=1, skewness=0.5) for s in scales]} 
+            wvlts['wavelets'][wavelet] = {'N':N, 'w':[msg(s, N=N, mod=0.8, shift=1, skewness=0.5) for s in scales]} 
         elif wavelet[:5].lower() == 'msge-':
             N = len(wavelet[5:]) 
-            wvlts[wavelet] = {'N':N, 'w':[msg_encoded(s, pattern=wavelet[5:], mod=1.5, shift=-2.9, skewness=0.04) for s in scales]}
+            wvlts['wavelets'][wavelet] = {'N':N, 'w':[msg_encoded(s, pattern=wavelet[5:], mod=1.5, shift=-2.9, skewness=0.04) for s in scales]}
         elif wavelet[:7].lower() == 'morlet-':
             N = int(wavelet[7:]) 
-            wvlts[wavelet] = {'N':N, 'w':[morlet(s, N=N, is_complex=False) for s in scales]}
+            wvlts['wavelets'][wavelet] = {'N':N, 'w':[morlet(s, N=N, is_complex=False) for s in scales]}
         elif wavelet[:8].lower() == 'cmorlet-':
             N = int(wavelet[8:])
-            wvlts[wavelet] = {'N':N, 'w':[morlet(s, N=N, is_complex=True) for s in scales]}
+            wvlts['wavelets'][wavelet] = {'N':N, 'w':[morlet(s, N=N, is_complex=True) for s in scales]}
         else:
             raise ValueError('please use proper wavelet names.')
         if show_wavelets:
             plt.plot(wvlts[wavelet]['w'][0],label=wavelet)
+        if len(trace) <= len(wvlts['wavelets'][wavelet]['w'][-1]):
+            raise RuntimeError('Wavelets are longer than trace, shrink the scale range.')
         if use_scratch:
-            _cwt.create_dataset(wavelet, (len(data),len(wvlts[wavelet]['w'])), chunks=True, dtype='float', compression="gzip")
-            if np.iscomplexobj(wvlts[wavelet]['w'][0]):
-                for n, w in enumerate(wvlts[wavelet]['w']):
-                    _l = floor(min(len(data),len(w))/2)
-                    _r = min(len(data),len(w))-_l-1
-                    _cwt[wavelet][_l:-_r,n] = np.abs(convolve(data, w, mode='valid')) 
+            _cwt.create_dataset(wavelet, (len(trace),len(wvlts['wavelets'][wavelet]['w'])), chunks=True, dtype='float', compression="gzip")
+            if np.iscomplexobj(wvlts['wavelets'][wavelet]['w'][0]):
+                for n, w in enumerate(wvlts['wavelets'][wavelet]['w']):
+                    _l = floor(min(len(trace),len(w))/2)
+                    _r = min(len(trace),len(w))-_l-1
+                    _cwt[wavelet][_l:-_r,n] = np.abs(convolve(trace, w, mode='valid')) 
             else:
-                for n, w in enumerate(wvlts[wavelet]['w']):
-                    _l = floor(min(len(data),len(w))/2)
-                    _r = min(len(data),len(w))-_l-1
-                    _cwt[wavelet][_l:-_r,n] = (0.5*convolve(data, w, mode='valid')) 
+                for n, w in enumerate(wvlts['wavelets'][wavelet]['w']):
+                    _l = floor(min(len(trace),len(w))/2)
+                    _r = min(len(trace),len(w))-_l-1
+                    _cwt[wavelet][_l:-_r,n] = (0.5*convolve(trace, w, mode='valid')) 
                     _cwt[wavelet][:,n] += np.abs(_cwt[wavelet][:,n])
         else:
-            _cwt[wavelet] = np.zeros((len(data),len(wvlts[wavelet]['w'])))
-            if np.iscomplexobj(wvlts[wavelet]['w'][0]):
-                for n, w in enumerate(wvlts[wavelet]['w']):
-                    _l = floor(min(len(data),len(w))/2)
-                    _r = min(len(data),len(w))-_l-1
-                    _cwt[wavelet][_l:-_r,n] = np.abs(convolve(data, w, mode='valid')) 
+            _cwt[wavelet] = np.zeros((len(trace),len(wvlts['wavelets'][wavelet]['w'])))
+            if np.iscomplexobj(wvlts['wavelets'][wavelet]['w'][0]):
+                for n, w in enumerate(wvlts['wavelets'][wavelet]['w']):
+                    _l = floor(min(len(trace),len(w))/2)
+                    _r = min(len(trace),len(w))-_l-1
+                    _cwt[wavelet][_l:-_r,n] = np.abs(convolve(trace, w, mode='valid')) 
             else:
-                for n, w in enumerate(wvlts[wavelet]['w']):
-                    _l = floor(min(len(data),len(w))/2)
-                    _r = min(len(data),len(w))-_l-1
-                    _cwt[wavelet][_l:-_r,n] = (0.5*convolve(data, w, mode='valid')) 
+                for n, w in enumerate(wvlts['wavelets'][wavelet]['w']):
+                    _l = floor(min(len(trace),len(w))/2)
+                    _r = min(len(trace),len(w))-_l-1
+                    _cwt[wavelet][_l:-_r,n] = (0.5*convolve(trace, w, mode='valid')) 
                     _cwt[wavelet][:,n] += np.abs(_cwt[wavelet][:,n])
     if show_wavelets:
         plt.legend()
         plt.show()
     return _cwt, wvlts
-def local_maxima(cwt, wavelets, threshold, macro_clusters=True, use_scratch=True, extent=1):
+def local_maxima(cwt, wavelets, events_scales, threshold, macro_clusters=True, use_scratch=True, extent=1):
     """ Finds and extract local maxima at each scale from CWT coefficients. 
     This is used for the outputs of the cwt() function.
     Parameters
@@ -369,10 +371,12 @@ def local_maxima(cwt, wavelets, threshold, macro_clusters=True, use_scratch=True
     if use_scratch:
         cwt = h5py.File('cwt.scratch', 'r')
     k = 0
-    for wavelet,wvlts in wavelets.items():
+    for wavelet,wvlts in wavelets['wavelets'].items():
+        # print(wvlts)
         for n, w in enumerate(wvlts['w']):
-            _index, _ = find_peaks(cwt[wavelet][:,n], distance=wvlts['N']*wavelets['scales'][n], height=threshold)
-            all_events = np.append(all_events, np.array(list(zip((_index), [wavelets['scales'][n]]*len(_index), cwt[wavelet][_index,n], [wvlts['N']]*len(_index), [k]*len(_index))), dtype=d_type), axis=0)
+            if events_scales[n]:
+                _index, _ = find_peaks(cwt[wavelet][:,n], distance=wvlts['N']*wavelets['scales'][n], height=threshold)
+                all_events = np.append(all_events, np.array(list(zip((_index), [wavelets['scales'][n]]*len(_index), cwt[wavelet][_index,n], [wvlts['N']]*len(_index), [k]*len(_index))), dtype=d_type), axis=0)
         k =+ 1
     if macro_clusters:
         all_events_t_l = all_events['loc']-0.5*extent*np.multiply(all_events['N'],all_events['scale']) 
@@ -389,12 +393,12 @@ def local_maxima(cwt, wavelets, threshold, macro_clusters=True, use_scratch=True
         if use_scratch:
             cwt.close()        
         return [all_events]
-def cwt_local_maxima(data,scales,wavelets,threshold,macro_clusters=True,show_wavelets=False,extent=1):
+def cwt_local_maxima(trace,scales,events_scales,wavelets,threshold,macro_clusters=True,show_wavelets=False,extent=1):
     """ Finds and extract local maxima at each scale while calculating CWT coefficients. 
     This is the integrated version of cwt() and local_maxima() function applied on input signal.
     Parameters
     ----------
-    data : array_like
+    trace : array_like
         Array to calculate CWT coefficients.
     scales : array_like
         Array of scale values.
@@ -443,17 +447,19 @@ def cwt_local_maxima(data,scales,wavelets,threshold,macro_clusters=True,show_wav
             plt.plot(wvlts[wavelet]['w'][0],label=wavelet)
         if np.iscomplexobj(wvlts[wavelet]['w'][0]):
             for n, w in enumerate(wvlts[wavelet]['w']):
-                _l = floor(min(len(data),len(w))/2)
-                _cwt = np.abs(convolve(data, w, mode='valid')) 
-                _index, _ = find_peaks(_cwt, distance=wvlts[wavelet]['N']*scales[n], height=threshold)
-                all_events = np.append(all_events, np.array(list(zip((_index+_l), [scales[n]]*len(_index), _cwt[_index], [wvlts[wavelet]['N']]*len(_index), [k]*len(_index))), dtype=d_type), axis=0)
+                _l = floor(min(len(trace),len(w))/2)
+                _cwt = np.abs(convolve(trace, w, mode='valid'))
+                if events_scales[n]:
+                    _index, _ = find_peaks(_cwt, distance=wvlts[wavelet]['N']*scales[n], height=threshold)
+                    all_events = np.append(all_events, np.array(list(zip((_index+_l), [scales[n]]*len(_index), _cwt[_index], [wvlts[wavelet]['N']]*len(_index), [k]*len(_index))), dtype=d_type), axis=0)
         else:
             for n, w in enumerate(wvlts[wavelet]['w']):
-                _l = floor(min(len(data),len(w))/2)
-                _cwt = (0.5*convolve(data, w, mode='valid')) 
+                _l = floor(min(len(trace),len(w))/2)
+                _cwt = (0.5*convolve(trace, w, mode='valid')) 
                 _cwt += np.abs(_cwt)
-                _index, _ = find_peaks(_cwt, distance=wvlts[wavelet]['N']*scales[n], height=threshold)
-                all_events = np.append(all_events, np.array(list(zip((_index+_l), [scales[n]]*len(_index), _cwt[_index], [wvlts[wavelet]['N']]*len(_index), [k]*len(_index))), dtype=d_type), axis=0)
+                if events_scales[n]:
+                    _index, _ = find_peaks(_cwt, distance=wvlts[wavelet]['N']*scales[n], height=threshold)
+                    all_events = np.append(all_events, np.array(list(zip((_index+_l), [scales[n]]*len(_index), _cwt[_index], [wvlts[wavelet]['N']]*len(_index), [k]*len(_index))), dtype=d_type), axis=0)
         k += 1
     if show_wavelets:
         plt.legend()
@@ -535,7 +541,7 @@ def tprfdr(t,d,e=1,MS=False):
         if MS=1, e is relative to location
         (deafult is 1)
     MS: bool
-        Set true if used for mass spectroscopy data (default is False).
+        Set true if used for mass spectroscopy trace (default is False).
     Returns
     -------
     tpr : float
@@ -570,6 +576,8 @@ class PCWA:
         self.wavelet = wavelet
         self.scales_range = scales
         self.scales_arr = []
+        self.events_scales_range = [self.scales_range[0], self.scales_range[1]]
+        self.events_scales_arr = []
         self.selectivity = selectivity
         self.w, self.h = w, h
         self.extent = extent
@@ -609,7 +617,7 @@ class PCWA:
         elif type(self.trace) in [list, np.ndarray, pd.Series]:
             trace = np.array(self.trace).flatten()
         else:
-            raise RuntimeError('Input data not valid.')
+            raise RuntimeError('Input trace not valid.')
         if wavelet != None:
             self.wavelet = wavelet
         if scales != None:
@@ -620,21 +628,24 @@ class PCWA:
                 self.scales_arr = np.linspace(self.scales_range[0], self.scales_range[1], int(self.scales_range[2]), dtype=np.float64)/self.dx
         if len(self.scales_arr) == 0:
             if self.scales_range == None:
-                raise RuntimeError('Please set pcwa.scales_arr or provide proper scales.')
+                raise RuntimeError('Please set pcwa.scales_arr or provide proper scales_range.')
             else:
                 if self.logscale:
                     self.scales_arr = np.logspace(np.log10(self.scales_range[0]), np.log10(self.scales_range[1]), int(self.scales_range[2]), dtype=np.float64)/self.dx
                 else:
                     self.scales_arr = np.linspace(self.scales_range[0], self.scales_range[1], int(self.scales_range[2]), dtype=np.float64)/self.dx
+        if len(self.trace) <= self.scales_arr[-1]:
+            raise RuntimeError('Scales are longer than trace, shrink the scale range.')
         if type(self.wavelet) != list:
             self.wavelet = [self.wavelet]
+        self.events_scales_arr = (self.scales_arr>=self.events_scales_range[0])*(self.scales_arr<=self.events_scales_range[1])
         selected_events = []
         if self.parallel:
             with mp.Pool(mp.cpu_count()) as pool:
                 if self.update_cwt:
                     self.cwt, self.wavelets = {}, {}
                     self.cwt, self.wavelets = cwt(self.trace, self.scales_arr, self.wavelet, show_wavelets=self.show_wavelets)
-                clusters = local_maxima(self.cwt,self.wavelets,self.scales_arr,threshold,self.mcluster,self.extent)
+                clusters = local_maxima(self.cwt,self.wavelets,self.events_scales_arr,threshold,self.mcluster,self.extent)
                 args = ((cluster,int(len(self.scales_arr)*self.selectivity),self.w,self.h) for cluster in clusters)
                 r = pool.map_async(ucluster, args, chunksize=100)
                 [selected_events.append(e) for e in r.get()]
@@ -644,9 +655,9 @@ class PCWA:
                 if self.update_cwt:
                     self.cwt, self.wavelets = {}, {}
                     self.cwt, self.wavelets = cwt(self.trace, self.scales_arr, self.wavelet, show_wavelets=self.show_wavelets, use_scratch=self.use_scratchfile)
-                clusters = local_maxima(self.cwt,self.wavelets,threshold,self.mcluster,self.use_scratchfile,self.extent)
+                clusters = local_maxima(self.cwt,self.wavelets,self.events_scales_arr,threshold,self.mcluster,self.use_scratchfile,self.extent)
             else:
-                clusters = cwt_local_maxima(self.trace,self.scales_arr,self.wavelet,threshold,self.mcluster,self.show_wavelets,self.extent)
+                clusters = cwt_local_maxima(self.trace,self.scales_arr,self.events_scales_arr,self.wavelet,threshold,self.mcluster,self.show_wavelets,self.extent)
             args = [(cluster,int(len(self.scales_arr)*self.selectivity),self.w,self.h) for cluster in clusters]
             for e in map(ucluster_map, args):
                 selected_events.append(e)
