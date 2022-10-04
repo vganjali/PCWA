@@ -587,6 +587,7 @@ class PCWA:
         self.update_cwt = update_cwt
         self.use_scratchfile = use_scratchfile
         self.keep_cwt = keep_cwt
+        self.use_peak_height = True
         self.cwt = {}
         self.wavelets = {}
         
@@ -662,6 +663,11 @@ class PCWA:
             for e in map(ucluster_map, args):
                 selected_events.append(e)
             self.events = np.concatenate(tuple(selected_events),axis=0)
+        if self.use_peak_height:
+            _idx_max = len(self.trace)
+            _idx = zip(np.clip(self.events['loc']-0.5*self.events['N']*self.events['scale'],a_min=0,a_max=_idx_max-1).astype(int),\
+                np.clip(self.events['loc']+0.5*self.events['N']*self.events['scale'],a_min=0,a_max=_idx_max).astype(int))
+            self.events['coeff'] = np.array([max(self.trace[_i[0]:_i[1]]) for _i in _idx],dtype=self.events['coeff'].dtype)
         return self.events
     
     def view_events(self,events,span=1,ax=None):

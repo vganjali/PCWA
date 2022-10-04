@@ -25,7 +25,8 @@ pcwa_analyzer.use_scratchfile = False
 events = pcwa_analyzer.detect_events(threshold=200)
 
 # fine tune the location of detected peaks
-loc = [int(e-events['scale'][n]+np.argmax(df_raw['Intensity'][int(e-events['scale'][n]):int(e+events['scale'][n])])) for n,e in enumerate(events['loc'])]
+loc = events['loc']
+# loc = [int(e-events['scale'][n]+np.argmax(df_raw['Intensity'][int(e-events['scale'][n]):int(e+events['scale'][n])])) for n,e in enumerate(events['loc'])]
 
 true_peaks = np.sort(df_true['Mass'].to_numpy())
 detected_peaks = np.sort(df_raw['Mass'].iloc[loc].to_numpy())
@@ -35,6 +36,8 @@ print(f"TPR={tpr:.3f}, FDR={fdr:.3f}")
 fig, ax = plt.subplots(3,1,figsize=(16,4),dpi=96,sharex=True,gridspec_kw={'height_ratios': [12,1,1]})
 l0, = ax[1].plot(df_true['Mass'],df_true['Particles']*0, '|',markersize=10,color='gray',label='Truth')
 ax[0].plot(df_raw['Mass'],df_raw['Intensity'],color='blue',lw=0.5)
+# ax[0].scatter(df_raw['Mass'].iloc[loc],df_raw['Intensity'].iloc[loc],color='red',marker='o',s=10,facecolors='none',zorder=10)
+ax[0].scatter(df_raw['Mass'].iloc[loc],events['coeff'],color='red',marker='o',s=10,facecolors='none',zorder=10)
 l1, = ax[2].plot(df_raw['Mass'].iloc[loc],[0]*len(loc),'|',markersize=10,color='red',label='PCWA')
 ax[1].set_yticks([])
 ax[1].set_ylim(-1e-12,1e-12)
