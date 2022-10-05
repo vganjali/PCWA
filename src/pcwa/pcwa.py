@@ -10,7 +10,7 @@ import time
 import matplotlib.pyplot as plt
 import multiprocessing as mp
 
-d_type = np.dtype([('loc', 'u8'), ('scale', 'f8'), ('coeff', 'f8'), ('N', 'f8'),('class', 'u1')])
+d_type = np.dtype([('loc', 'i8'), ('scale', 'f8'), ('coeff', 'f8'), ('height', 'f8') ('N', 'f8'),('class', 'u1')])
 eps = 1.0e-12
 
 #================================= Wavelet functions =================================#
@@ -364,7 +364,7 @@ def local_maxima(cwt, wavelets, events_scales, threshold, macro_clusters=True, u
         Extension/spreading of events merging distance in x/time axis for macro-cluster forming purposes (default is 1).
     Returns
     -------
-    local maxima : list of ndarray of dtype([('loc', 'u8'), ('scale', 'f8'), ('coeff', 'f8'), ('N', 'f8'), ('class', 'u1')])
+    local maxima : list of ndarray of dtype([('loc', 'i8'), ('scale', 'f8'), ('coeff', 'f8'), ('height', 'f8') ('N', 'f8'), ('class', 'u1')])
         List of array(s) of local maxima events.
     """
     all_events = np.empty((0,), dtype=d_type)
@@ -419,7 +419,7 @@ def cwt_local_maxima(trace,scales,events_scales,wavelets,threshold,macro_cluster
         Extension/spreading of events merging distance in x/time axis for macro-cluster forming purposes (default is 1).
     Returns
     -------
-    local maxima : list of ndarray of dtype([('loc', 'u8'), ('scale', 'f8'), ('coeff', 'f8'), ('N', 'f8'), ('class', 'u1')])
+    local maxima : list of ndarray of dtype([('loc', 'i8'), ('scale', 'f8'), ('coeff', 'f8'), ('height', 'f8') ('N', 'f8'), ('class', 'u1')])
         List of array(s) of local maxima events.
     """
     all_events = np.empty((0,), dtype=d_type)
@@ -491,7 +491,7 @@ def ucluster(events, selectivity, w, h):
         Spreading weight in y (scale) axis.
     Returns
     -------
-    events : array_like of dtype([('loc', 'u8'), ('scale', 'f8'), ('coeff', 'f8'), ('N', 'f8'), ('class', 'u1')])
+    events : array_like of dtype([('loc', 'i8'), ('scale', 'f8'), ('coeff', 'f8'), ('height', 'f8') ('N', 'f8'), ('class', 'u1')])
         Array of selected event(s) found in the given input events list (macro-cluster).
     """
     selected_events = []
@@ -521,7 +521,7 @@ def ucluster_map(args):
         Iterable list/dict of arguments
     Returns
     -------
-    events : array_like of dtype([('loc', 'u8'), ('scale', 'f8'), ('coeff', 'f8'), ('N', 'f8'), ('class', 'u1')])
+    events : array_like of dtype([('loc', 'i8'), ('scale', 'f8'), ('coeff', 'f8'), ('height', 'f8') ('N', 'f8'), ('class', 'u1')])
         Array of selected event(s) found in the given input events list (macro-cluster).
     """
     return ucluster(*args)
@@ -587,7 +587,6 @@ class PCWA:
         self.update_cwt = update_cwt
         self.use_scratchfile = use_scratchfile
         self.keep_cwt = keep_cwt
-        self.use_peak_height = True
         self.cwt = {}
         self.wavelets = {}
         
@@ -610,7 +609,7 @@ class PCWA:
             [minimum, maximum, count] of scales. Scale values are in dx scale. Will overwrite pcwa.scales_arr parameter.
         Returns
         -------
-        events : ndarray with dtype([('loc', 'u8'), ('scale', 'f8'), ('coeff', 'f8'), ('N', 'f8'), ('class', 'u1')])
+        events : ndarray with dtype([('loc', 'i8'), ('scale', 'f8'), ('coeff', 'f8'), ('height', 'f8') ('N', 'f8'), ('class', 'u1')])
             Array including information of detected events.
         """
         if type(trace) in [list, np.ndarray, pd.Series]:
@@ -663,11 +662,10 @@ class PCWA:
             for e in map(ucluster_map, args):
                 selected_events.append(e)
             self.events = np.concatenate(tuple(selected_events),axis=0)
-        if self.use_peak_height:
-            _idx_max = len(self.trace)
-            _idx = zip(np.clip(self.events['loc']-0.5*self.events['N']*self.events['scale'],a_min=0,a_max=_idx_max-1).astype(int),\
-                np.clip(self.events['loc']+0.5*self.events['N']*self.events['scale'],a_min=0,a_max=_idx_max).astype(int))
-            self.events['coeff'] = np.array([max(self.trace[_i[0]:_i[1]]) for _i in _idx],dtype=self.events['coeff'].dtype)
+        _idx_max = len(self.trace)
+        _idx = zip(np.clip(self.events['loc']-0.5*self.events['N']*self.events['scale'],a_min=0,a_max=_idx_max-1).astype(int),\
+            np.clip(self.events['loc']+0.5*self.events['N']*self.events['scale'],a_min=0,a_max=_idx_max).astype(int))
+        self.events['height'] = np.array([max(self.trace[_i[0]:_i[1]]) for _i in _idx])
         return self.events
     
     def view_events(self,events,span=1,ax=None):
