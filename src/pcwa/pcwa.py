@@ -10,7 +10,7 @@ import time
 import matplotlib.pyplot as plt
 import multiprocessing as mp
 
-d_type = np.dtype([('loc', 'i8'), ('scale', 'f8'), ('coeff', 'f8'), ('height', 'f8') ('N', 'f8'),('class', 'u1')])
+d_type = np.dtype([('loc', 'i8'), ('scale', 'f8'), ('coeff', 'f8'), ('height', 'f8'), ('N', 'f8'),('class', 'u1')])
 eps = 1.0e-12
 
 #================================= Wavelet functions =================================#
@@ -364,7 +364,7 @@ def local_maxima(cwt, wavelets, events_scales, threshold, macro_clusters=True, u
         Extension/spreading of events merging distance in x/time axis for macro-cluster forming purposes (default is 1).
     Returns
     -------
-    local maxima : list of ndarray of dtype([('loc', 'i8'), ('scale', 'f8'), ('coeff', 'f8'), ('height', 'f8') ('N', 'f8'), ('class', 'u1')])
+    local maxima : list of ndarray of dtype([('loc', 'i8'), ('scale', 'f8'), ('coeff', 'f8'), ('height', 'f8'), ('N', 'f8'), ('class', 'u1')])
         List of array(s) of local maxima events.
     """
     all_events = np.empty((0,), dtype=d_type)
@@ -376,7 +376,7 @@ def local_maxima(cwt, wavelets, events_scales, threshold, macro_clusters=True, u
         for n, w in enumerate(wvlts['w']):
             if events_scales[n]:
                 _index, _ = find_peaks(cwt[wavelet][:,n], distance=wvlts['N']*wavelets['scales'][n], height=threshold)
-                all_events = np.append(all_events, np.array(list(zip((_index), [wavelets['scales'][n]]*len(_index), cwt[wavelet][_index,n], [wvlts['N']]*len(_index), [k]*len(_index))), dtype=d_type), axis=0)
+                all_events = np.append(all_events, np.array(list(zip((_index), [wavelets['scales'][n]]*len(_index), cwt[wavelet][_index,n], [0]*len(_index), [wvlts['N']]*len(_index), [k]*len(_index))), dtype=d_type), axis=0)
         k =+ 1
     if macro_clusters:
         all_events_t_l = all_events['loc']-0.5*extent*np.multiply(all_events['N'],all_events['scale']) 
@@ -451,7 +451,7 @@ def cwt_local_maxima(trace,scales,events_scales,wavelets,threshold,macro_cluster
                 _cwt = np.abs(convolve(trace, w, mode='valid'))
                 if events_scales[n]:
                     _index, _ = find_peaks(_cwt, distance=wvlts[wavelet]['N']*scales[n], height=threshold)
-                    all_events = np.append(all_events, np.array(list(zip((_index+_l), [scales[n]]*len(_index), _cwt[_index], [wvlts[wavelet]['N']]*len(_index), [k]*len(_index))), dtype=d_type), axis=0)
+                    all_events = np.append(all_events, np.array(list(zip((_index+_l), [scales[n]]*len(_index), _cwt[_index], [0]*len(_index), [wvlts[wavelet]['N']]*len(_index), [k]*len(_index))), dtype=d_type), axis=0)
         else:
             for n, w in enumerate(wvlts[wavelet]['w']):
                 _l = floor(min(len(trace),len(w))/2)
@@ -459,7 +459,7 @@ def cwt_local_maxima(trace,scales,events_scales,wavelets,threshold,macro_cluster
                 _cwt += np.abs(_cwt)
                 if events_scales[n]:
                     _index, _ = find_peaks(_cwt, distance=wvlts[wavelet]['N']*scales[n], height=threshold)
-                    all_events = np.append(all_events, np.array(list(zip((_index+_l), [scales[n]]*len(_index), _cwt[_index], [wvlts[wavelet]['N']]*len(_index), [k]*len(_index))), dtype=d_type), axis=0)
+                    all_events = np.append(all_events, np.array(list(zip((_index+_l), [scales[n]]*len(_index), _cwt[_index], [0]*len(_index), [wvlts[wavelet]['N']]*len(_index), [k]*len(_index))), dtype=d_type), axis=0)
         k += 1
     if show_wavelets:
         plt.legend()
@@ -491,7 +491,7 @@ def ucluster(events, selectivity, w, h):
         Spreading weight in y (scale) axis.
     Returns
     -------
-    events : array_like of dtype([('loc', 'i8'), ('scale', 'f8'), ('coeff', 'f8'), ('height', 'f8') ('N', 'f8'), ('class', 'u1')])
+    events : array_like of dtype([('loc', 'i8'), ('scale', 'f8'), ('coeff', 'f8'), ('height', 'f8'), ('N', 'f8'), ('class', 'u1')])
         Array of selected event(s) found in the given input events list (macro-cluster).
     """
     selected_events = []
@@ -521,7 +521,7 @@ def ucluster_map(args):
         Iterable list/dict of arguments
     Returns
     -------
-    events : array_like of dtype([('loc', 'i8'), ('scale', 'f8'), ('coeff', 'f8'), ('height', 'f8') ('N', 'f8'), ('class', 'u1')])
+    events : array_like of dtype([('loc', 'i8'), ('scale', 'f8'), ('coeff', 'f8'), ('height', 'f8'), ('N', 'f8'), ('class', 'u1')])
         Array of selected event(s) found in the given input events list (macro-cluster).
     """
     return ucluster(*args)
@@ -609,7 +609,7 @@ class PCWA:
             [minimum, maximum, count] of scales. Scale values are in dx scale. Will overwrite pcwa.scales_arr parameter.
         Returns
         -------
-        events : ndarray with dtype([('loc', 'i8'), ('scale', 'f8'), ('coeff', 'f8'), ('height', 'f8') ('N', 'f8'), ('class', 'u1')])
+        events : ndarray with dtype([('loc', 'i8'), ('scale', 'f8'), ('coeff', 'f8'), ('height', 'f8'), ('N', 'f8'), ('class', 'u1')])
             Array including information of detected events.
         """
         if type(trace) in [list, np.ndarray, pd.Series]:
