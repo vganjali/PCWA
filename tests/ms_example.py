@@ -18,7 +18,7 @@ pcwa_analyzer.scales_range = [10,1000,500]
 pcwa_analyzer.wavelet = ['ricker']
 pcwa_analyzer.keep_cwt = True
 pcwa_analyzer.w, pcwa_analyzer.h = 1, 1
-pcwa_analyzer.show_wavelets = False
+pcwa_analyzer.show_wavelets = True
 pcwa_analyzer.use_scratchfile = False
 
 # detect events (peaks)
