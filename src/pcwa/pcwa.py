@@ -576,8 +576,8 @@ class PCWA:
         self.wavelet = wavelet
         self.scales_range = scales
         self.scales_arr = []
-        self.events_scales_range = [self.scales_range[0], self.scales_range[1]]
-        self.events_scales_arr = []
+        self.events_scales_range = [(self.scales_range[0], self.scales_range[1])]
+        self.events_scales_arr = None
         self.selectivity = selectivity
         self.w, self.h = w, h
         self.extent = extent
@@ -638,7 +638,10 @@ class PCWA:
             raise RuntimeError('Scales are longer than trace, shrink the scale range.')
         if type(self.wavelet) != list:
             self.wavelet = [self.wavelet]
-        self.events_scales_arr = (self.scales_arr>=(self.events_scales_range[0]/self.dx))*(self.scales_arr<=(self.events_scales_range[1]/self.dx))
+        if self.events_scales_arr == None:
+            self.events_scales_arr = np.array([False]*self.scales_range[2])
+            for r in self.events_scales_range:
+                self.events_scales_arr += (self.scales_arr>=(r[0]/self.dx))*(self.scales_arr<=(r[1]/self.dx))
         selected_events = []
         if self.parallel:
             with mp.Pool(mp.cpu_count()) as pool:
