@@ -290,7 +290,7 @@ def cwt(trace, scales, wavelets, wavelet_args, use_scratch=True, show_wavelets=F
         _cwt = {wavelet:[] for wavelet in wavelets}
     if show_wavelets:
         plt.figure()
-    for k,wavelet in enumerate(wavelets):
+    for wavelet,wavelet_args in zip(wavelets,wavelet_args):
         if wavelet.lower() == 'ricker': 
             N = 1 
             wvlts['wavelets'][wavelet] = {'N':N, 'w':[ricker(s) for s in scales]}
@@ -299,13 +299,13 @@ def cwt(trace, scales, wavelets, wavelet_args, use_scratch=True, show_wavelets=F
             if wavelet_args == None:
                 wvlts['wavelets'][wavelet] = {'N':N, 'w':[msg(s, N=N, mod=0.8, shift=1, skewness=0.5) for s in scales]} 
             else:
-                wvlts['wavelets'][wavelet] = {'N':N, 'w':[msg(s, N=N, *wavelet_args) for s in scales]} 
+                wvlts['wavelets'][wavelet] = {'N':N, 'w':[msg(s, N=N, **wavelet_args) for s in scales]} 
         elif wavelet[:5].lower() == 'msge-':
             N = len(wavelet[5:])
             if wavelet_args == None:
                 wvlts['wavelets'][wavelet] = {'N':N, 'w':[msg_encoded(s, pattern=wavelet[5:], mod=1.5, shift=-2.9, skewness=0.04) for s in scales]}
             else:
-                wvlts['wavelets'][wavelet] = {'N':N, 'w':[msg_encoded(s, pattern=wavelet[5:], *wavelet_args) for s in scales]}
+                wvlts['wavelets'][wavelet] = {'N':N, 'w':[msg_encoded(s, pattern=wavelet[5:], **wavelet_args) for s in scales]}
         elif wavelet[:7].lower() == 'morlet-':
             N = int(wavelet[7:]) 
             wvlts['wavelets'][wavelet] = {'N':N, 'w':[morlet(s, N=N, is_complex=False) for s in scales]}
@@ -376,14 +376,14 @@ def local_maxima(cwt, wavelets, events_scales, threshold, macro_clusters=True, u
     all_events = np.empty((0,), dtype=d_type)
     if use_scratch:
         cwt = h5py.File('cwt.scratch', 'r')
-    k = 0
+    class_n = 0
     for wavelet,wvlts in wavelets['wavelets'].items():
         # print(wvlts)
         for n, w in enumerate(wvlts['w']):
             if events_scales[n]:
                 _index, _ = find_peaks(cwt[wavelet][:,n], distance=wvlts['N']*wavelets['scales'][n], height=threshold)
-                all_events = np.append(all_events, np.array(list(zip((_index), [wavelets['scales'][n]]*len(_index), cwt[wavelet][_index,n], [0]*len(_index), [wvlts['N']]*len(_index), [k]*len(_index))), dtype=d_type), axis=0)
-        k =+ 1
+                all_events = np.append(all_events, np.array(list(zip((_index), [wavelets['scales'][n]]*len(_index), cwt[wavelet][_index,n], [0]*len(_index), [wvlts['N']]*len(_index), [class_n]*len(_index))), dtype=d_type), axis=0)
+        class_n += 1
     if macro_clusters:
         all_events_t_l = all_events['loc']-0.5*extent*np.multiply(all_events['N'],all_events['scale']) 
         _index_l = np.argsort(all_events_t_l) 
@@ -432,8 +432,8 @@ def cwt_local_maxima(trace,scales,events_scales,wavelets,wavelet_args,threshold,
     wvlts = {wavelet:{} for wavelet in wavelets}
     if show_wavelets:
         plt.figure()
-    k = 0
-    for wavelet in wavelets:
+    class_n = 0
+    for wavelet,wavelet_args in zip(wavelets,wavelet_args):
         if wavelet == 'ricker': 
             N = 1 
             wvlts[wavelet] = {'N':N, 'w':[ricker(s) for s in scales]}
@@ -442,13 +442,13 @@ def cwt_local_maxima(trace,scales,events_scales,wavelets,wavelet_args,threshold,
             if wavelet_args == None:
                 wvlts[wavelet] = {'N':N, 'w':[msg(s, N=N, mod=0.8, shift=1, skewness=0.5) for s in scales]} 
             else:
-                wvlts[wavelet] = {'N':N, 'w':[msg(s, N=N, *wavelet_args) for s in scales]} 
+                wvlts[wavelet] = {'N':N, 'w':[msg(s, N=N, **wavelet_args) for s in scales]} 
         elif wavelet[:5] == 'msge-':
             N = len(wavelet[5:]) 
             if wavelet_args == None:
                 wvlts[wavelet] = {'N':N, 'w':[msg_encoded(s, pattern=wavelet[5:], mod=1.5, shift=-2.9, skewness=0.04) for s in scales]}
             else:
-                wvlts[wavelet] = {'N':N, 'w':[msg_encoded(s, pattern=wavelet[5:], *wavelet_args) for s in scales]}
+                wvlts[wavelet] = {'N':N, 'w':[msg_encoded(s, pattern=wavelet[5:], **wavelet_args) for s in scales]}
         elif wavelet[:7] == 'morlet-':
             N = int(wavelet[7:]) 
             wvlts[wavelet] = {'N':N, 'w':[morlet(s, N=N, is_complex=False) for s in scales]}
@@ -463,7 +463,7 @@ def cwt_local_maxima(trace,scales,events_scales,wavelets,wavelet_args,threshold,
                 _cwt = np.abs(convolve(trace, w, mode='valid'))
                 if events_scales[n]:
                     _index, _ = find_peaks(_cwt, distance=wvlts[wavelet]['N']*scales[n], height=threshold)
-                    all_events = np.append(all_events, np.array(list(zip((_index+_l), [scales[n]]*len(_index), _cwt[_index], [0]*len(_index), [wvlts[wavelet]['N']]*len(_index), [k]*len(_index))), dtype=d_type), axis=0)
+                    all_events = np.append(all_events, np.array(list(zip((_index+_l), [scales[n]]*len(_index), _cwt[_index], [0]*len(_index), [wvlts[wavelet]['N']]*len(_index), [class_n]*len(_index))), dtype=d_type), axis=0)
         else:
             for n, w in enumerate(wvlts[wavelet]['w']):
                 _l = floor(min(len(trace),len(w))/2)
@@ -471,8 +471,8 @@ def cwt_local_maxima(trace,scales,events_scales,wavelets,wavelet_args,threshold,
                 _cwt += np.abs(_cwt)
                 if events_scales[n]:
                     _index, _ = find_peaks(_cwt, distance=wvlts[wavelet]['N']*scales[n], height=threshold)
-                    all_events = np.append(all_events, np.array(list(zip((_index+_l), [scales[n]]*len(_index), _cwt[_index], [0]*len(_index), [wvlts[wavelet]['N']]*len(_index), [k]*len(_index))), dtype=d_type), axis=0)
-        k += 1
+                    all_events = np.append(all_events, np.array(list(zip((_index+_l), [scales[n]]*len(_index), _cwt[_index], [0]*len(_index), [wvlts[wavelet]['N']]*len(_index), [class_n]*len(_index))), dtype=d_type), axis=0)
+        class_n += 1
     if show_wavelets:
         plt.legend()
         plt.show()
@@ -487,6 +487,15 @@ def cwt_local_maxima(trace,scales,events_scales,wavelets,wavelet_args,threshold,
         return _mc
     else:
         return [all_events]
+def mcluster(events, extent=1):
+    all_events_t_l = events['loc']-0.5*extent*np.multiply(events['N'],events['scale']) 
+    _index_l = np.argsort(all_events_t_l) 
+    all_events_t_r = events['loc']+0.5*extent*np.multiply(events['N'],events['scale']) 
+    _index_r = np.argsort(all_events_t_r) 
+    all_events_overlap = all_events_t_r[_index_r[:-1]]-all_events_t_l[_index_l[1:]] 
+    _slices = np.argwhere(all_events_overlap <= 0).flatten()+1 
+    _mc = np.split(events[_index_l], _slices, axis=0) 
+    return _mc
 def ucluster(events, selectivity, w, h):
     """ Finds and extract micro-clusters from the the array of local-maxima (events).
     It forms clusters by finding nearby events using euclidean distance, coefficient value of centroid point,
@@ -673,7 +682,7 @@ class PCWA:
                     self.cwt, self.wavelets = cwt(self.trace, self.scales_arr, self.wavelet, wavelet_args=self.wavelet_args, show_wavelets=self.show_wavelets, use_scratch=self.use_scratchfile)
                 clusters = local_maxima(self.cwt,self.wavelets,self.events_scales_arr,threshold,self.mcluster,self.use_scratchfile,self.extent)
             else:
-                clusters = cwt_local_maxima(self.trace,self.scales_arr,self.events_scales_arr,self.wavelet,threshold,self.mcluster,self.show_wavelets,self.extent,wavelet_args=self.wavelet_args)
+                clusters = cwt_local_maxima(self.trace,self.scales_arr,self.events_scales_arr,self.wavelet,self.wavelet_args,threshold,self.mcluster,self.show_wavelets,self.extent)
             args = [(cluster,int(len(self.scales_arr)*self.selectivity),self.w,self.h) for cluster in clusters]
             for e in map(ucluster_map, args):
                 selected_events.append(e)
