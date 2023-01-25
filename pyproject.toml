@@ -1,6 +1,6 @@
 [project]
 name = "pcwa"
-version = "0.2.7"
+version = "0.2.8"
 authors = [
   { name="Vahid Ganjalizadeh", email="vganjali@ucsc.edu" },
   { name="Holger Schmidt", email="hschmidt@ucsc.edu" },
@@ -13,6 +13,14 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "numpy >= 1.19.2",
+    "scipy >= 1.6.2",
+    "matplotlib >= 3.3.4",
+    "h5py >= 2.10.0",
+    "pandas >= 1.2.1"
 ]
 
 [build-system]

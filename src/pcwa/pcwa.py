@@ -105,9 +105,10 @@ def skew_normal(x, mu, sigma, alpha=0):
     xi = mu - sigma*m_0
     phi = 1/np.sqrt(2*np.pi)*np.exp(-((x-xi)**2)/(2*sigma**2))
     _PHI = 1/2*(1+erf(alpha*(x-xi)/sigma/np.sqrt(2)))
+    # print(np.sum((2/sigma*phi*_PHI)**2),np.min(2/sigma*phi*_PHI))
     return 2/sigma*phi*_PHI
 
-def msg(scale=10, N=6, window=1, mplx_ratio=[1], mod=0.5, shift=1, skewness=1, is_complex=False, is_mf=False, dx=1):
+def msg(scale=10, N=6, window=1, mplx_ratio=[1], mod=0.7, shift=1, skewness=1, is_complex=False, is_mf=False, dx=1):
     """ Creates a combinatorial (multiplexed) Multi-spot Gaussian with N peaks (MSG-N) wavelet function.
      useful to detect events of multiple peaks.
     Parameters
@@ -148,8 +149,8 @@ def msg(scale=10, N=6, window=1, mplx_ratio=[1], mod=0.5, shift=1, skewness=1, i
     N_max = max(N)
     skewness *= 1.2*mod
     resolution = scale/dx
-    sigma = resolution/4.29193*mod*N_max/8
-    length = int(N_max*resolution + shift*resolution + (1+4*skewness)*5*N_max*window*sigma)
+    sigma = resolution/4.29193*mod
+    length = int(N_max*resolution + shift*resolution + (3+3*skewness)*6*N_max**0.33*window*sigma)
     t = np.arange(length)
     if is_complex:
         s = np.zeros((length,),dtype=np.complex)
@@ -167,8 +168,10 @@ def msg(scale=10, N=6, window=1, mplx_ratio=[1], mod=0.5, shift=1, skewness=1, i
             for m in range(n):
                 s += mplx_ratio[i]*skew_normal(t,length/2-((n-1)/2-m)*(N_max/n)*resolution,sigma, alpha=0)
     if not is_mf:
-        s -= 0.5*skew_normal(t, length/2+(N_max/2+shift/2)*resolution, (1+4*skewness)*N_max/2*window*sigma, alpha=4*skewness*N_max/2*window)
-        s -= 0.5*skew_normal(t, length/2-(N_max/2+shift/2)*resolution, (1+4*skewness)*N_max/2*window*sigma, alpha=-4*skewness*N_max/2*window)
+        _s = skew_normal(t, length/2+(N_max/2+shift/2)*resolution, 1*(3+3*(N_max/2)**0.5)*window*sigma, alpha=1*skewness*(3+2*(N_max/2)**0.5)*window)
+        s -= 0.5*_s*N_max
+        _s = skew_normal(t, length/2-(N_max/2+shift/2)*resolution, 1*(3+3*(N_max/2)**0.5)*window*sigma, alpha=-1*skewness*(3+2*(N_max/2)**0.5)*window)
+        s -= 0.5*_s*N_max
         s -= np.mean(s)
     s_square_norm = np.trapz(np.abs(s)**2, dx=1)
     s = s/np.sqrt(s_square_norm)

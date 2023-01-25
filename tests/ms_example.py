@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 from src.pcwa import pcwa
 
 # read the raw mass scpectroscopy data and truth values
-df_raw = pd.read_csv('tests/n100sig66_dataset_1_25/Dataset_14/RawSpectra/noisy22.txt',sep=' ')
-df_true = pd.read_csv('tests/n100sig66_dataset_1_25/Dataset_14/truePeaks/truth22.txt',sep=' ')
+df_raw = pd.read_csv('n100sig66_dataset_1_25/Dataset_14/RawSpectra/noisy22.txt',sep=' ')
+df_true = pd.read_csv('n100sig66_dataset_1_25/Dataset_14/truePeaks/truth22.txt',sep=' ')
 
 # create pcwa_analyzer object and set the desired parameters
 pcwa_analyzer = pcwa.PCWA()
