@@ -5,7 +5,7 @@ from src.pcwa import pcwa
 import numpy as np
 
 y0 = 0
-plt.figure(figsize=(10,10),dpi=120)
+plt.figure(figsize=(10,10))
 for n in range(1,12):
     y = pcwa.msg(scale=10,window=1,N=n,skewness=1,dx=0.1)
     x = len(y)
