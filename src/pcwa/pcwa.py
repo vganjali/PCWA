@@ -318,7 +318,8 @@ def cwt(trace, scales, wavelets, wavelet_args, use_scratch=True, show_wavelets=F
         else:
             raise ValueError('please use proper wavelet names.')
         if show_wavelets:
-            plt.plot(wvlts['wavelets'][wavelet]['w'][0],label=wavelet)
+            _wp = wvlts['wavelets'][wavelet]['w'][0]
+            plt.plot(np.linspace(-len(_wp)/2,len(_wp)/2,len(_wp)),_wp,label=wavelet)
         if len(trace) <= len(wvlts['wavelets'][wavelet]['w'][-1]):
             raise RuntimeError('Wavelets are longer than trace, shrink the scale range.')
         if use_scratch:
@@ -598,7 +599,7 @@ class PCWA:
         self.mcluster = mcluster
         self.logscale = logscale
         self.wavelet = wavelet
-        self.wavelet_args = [None]*len(self.wavelet)
+        self.wavelet_args = None
         self.scales_range = scales
         self.scales_arr = []
         self.events_scales_range = [(self.scales_range[0], self.scales_range[1])]
@@ -667,6 +668,11 @@ class PCWA:
             self.events_scales_arr = np.array([False]*self.scales_range[2])
             for r in self.events_scales_range:
                 self.events_scales_arr += (self.scales_arr>=(r[0]/self.dx))*(self.scales_arr<=(r[1]/self.dx))
+        if self.wavelet_args == None:
+            self.wavelet_args = [None]*len(self.wavelet)
+        elif type(self.wavelet_args) == list:
+            if len(self.wavelet_args) != len(self.wavelet):
+                self.wavelet_args = [None]*len(self.wavelet)
         selected_events = []
         if self.parallel:
             with mp.Pool(mp.cpu_count()) as pool:
