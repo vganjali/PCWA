@@ -245,7 +245,7 @@ def msg_encoded(scale=10, pattern='F08', window=1, mod=0.5, shift=1, skewness=1,
     return s
 
 #============================== CWT and Event Detection ==============================#
-def cwt(trace, scales, wavelets, wavelet_args, use_scratch=True, show_wavelets=False):
+def cwt(trace, scales, wavelets, wavelet_args, use_scratch=True, show_wavelets=False, return_wvlts=True):
     """ Calculates CWT coefficients for the input trace based on the list of 
     wavelet functions and scales provided.
     Parameters
@@ -351,7 +351,10 @@ def cwt(trace, scales, wavelets, wavelet_args, use_scratch=True, show_wavelets=F
     if show_wavelets:
         plt.legend()
         plt.show()
-    return _cwt, wvlts
+    if return_wvlts:
+        return _cwt, wvlts
+    else:
+        return _cwt
 def local_maxima(cwt, wavelets, events_scales, threshold, macro_clusters=True, use_scratch=True, extent=1):
     """ Finds and extract local maxima at each scale from CWT coefficients. 
     This is used for the outputs of the cwt() function.
