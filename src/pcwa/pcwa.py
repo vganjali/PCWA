@@ -1,7 +1,9 @@
 try:
-    import cupy as np
+    import cupy as cp
+    gpu_mode = True
 except Exception as excpt:
     print(excpt)
+    gpu_mode = False
     import numpy as np
 import pandas as pd
 import h5py
@@ -65,17 +67,21 @@ def morlet(scale=10, N=6, window=1, is_complex=False, dx=1):
     """
     resolution = scale/dx
     length = int(2*(N+4)*window*resolution)
-    t = np.arange(length)
-    sigma = length/(10*window)
-    s_exp = np.exp(-(t-length/2)**2/(2*sigma**2))
-    if (is_complex):
-        s_sin = np.exp(1j*(2*np.pi/resolution*(t-length/2)-np.pi*(0.75-N%2)))
+    if gpu_mode:
+        t = cp.arange(length)
     else:
-        s_sin = np.sin((2*np.pi/resolution*(t-length/2)-np.pi*(0.5-N%2)))
+        t = np.arange(length)
+    xp = cp.get_array_module(t)
+    sigma = length/(10*window)
+    s_exp = xp.exp(-(t-length/2)**2/(2*sigma**2))
+    if (is_complex):
+        s_sin = xp.exp(1j*(2*xp.pi/resolution*(t-length/2)-xp.pi*(0.75-N%2)))
+    else:
+        s_sin = xp.sin((2*xp.pi/resolution*(t-length/2)-xp.pi*(0.5-N%2)))
     s = s_exp*s_sin
-    s -= np.mean(s)
-    s_square_norm = np.trapz(np.abs(s)**2, dx=1)
-    return s/np.sqrt(s_square_norm)
+    s -= xp.mean(s)
+    s_square_norm = xp.trapz(xp.abs(s)**2, dx=1)
+    return s/xp.sqrt(s_square_norm)
 
 def skew_normal(x, mu, sigma, alpha=0):
     """ Creates a skewed normal function
@@ -340,18 +346,19 @@ def cwt(trace, scales, wavelets, wavelet_args, use_scratch=True, show_wavelets=F
                     _cwt[wavelet][_l:-_r,n] = (0.5*convolve(trace, w, mode='valid')) 
                     _cwt[wavelet][:,n] += np.abs(_cwt[wavelet][:,n])
         else:
-            _cwt[wavelet] = np.zeros((len(trace),len(wvlts['wavelets'][wavelet]['w'])))
-            if np.iscomplexobj(wvlts['wavelets'][wavelet]['w'][0]):
+            xp = cp.get_array_module(trace)
+            _cwt[wavelet] = xp.empty((len(trace),len(wvlts['wavelets'][wavelet]['w'])))
+            if xp.iscomplexobj(wvlts['wavelets'][wavelet]['w'][0]):
                 for n, w in enumerate(wvlts['wavelets'][wavelet]['w']):
                     _l = floor(min(len(trace),len(w))/2)
                     _r = min(len(trace),len(w))-_l-1
-                    _cwt[wavelet][_l:-_r,n] = np.abs(convolve(trace, w, mode='valid')) 
+                    _cwt[wavelet][_l:-_r,n] = xp.abs(convolve(trace, w, mode='valid')) 
             else:
                 for n, w in enumerate(wvlts['wavelets'][wavelet]['w']):
                     _l = floor(min(len(trace),len(w))/2)
                     _r = min(len(trace),len(w))-_l-1
                     _cwt[wavelet][_l:-_r,n] = (0.5*convolve(trace, w, mode='valid')) 
-                    _cwt[wavelet][:,n] += np.abs(_cwt[wavelet][:,n])
+                    _cwt[wavelet][:,n] += xp.abs(_cwt[wavelet][:,n])
     if show_wavelets:
         plt.legend()
         plt.show()
@@ -384,7 +391,8 @@ def local_maxima(cwt, wavelets, events_scales, threshold, macro_clusters=True, u
     local maxima : list of ndarray of dtype([('loc', 'i8'), ('scale', 'f8'), ('coeff', 'f8'), ('height', 'f8'), ('N', 'f8'), ('class', 'u1')])
         List of array(s) of local maxima events.
     """
-    all_events = np.empty((0,), dtype=d_type)
+    xp = cp.get_array_module(cwt[list(cwt.keys())[0]])
+    all_events = xp.empty((0,), dtype=d_type)
     if use_scratch:
         cwt = h5py.File('cwt.scratch', 'r')
     class_n = 0
@@ -393,16 +401,16 @@ def local_maxima(cwt, wavelets, events_scales, threshold, macro_clusters=True, u
         for n, w in enumerate(wvlts['w']):
             if events_scales[n]:
                 _index, _ = find_peaks(cwt[wavelet][:,n], distance=wvlts['N']*wavelets['scales'][n], height=threshold)
-                all_events = np.append(all_events, np.array(list(zip((_index), [wavelets['scales'][n]]*len(_index), cwt[wavelet][_index,n], [0]*len(_index), [wvlts['N']]*len(_index), [class_n]*len(_index))), dtype=d_type), axis=0)
+                all_events = xp.append(all_events, xp.array(list(zip((_index), [wavelets['scales'][n]]*len(_index), cwt[wavelet][_index,n], [0]*len(_index), [wvlts['N']]*len(_index), [class_n]*len(_index))), dtype=d_type), axis=0)
         class_n += 1
     if macro_clusters:
-        all_events_t_l = all_events['loc']-0.5*extent*np.multiply(all_events['N'],all_events['scale']) 
-        _index_l = np.argsort(all_events_t_l) 
-        all_events_t_r = all_events['loc']+0.5*extent*np.multiply(all_events['N'],all_events['scale']) 
-        _index_r = np.argsort(all_events_t_r) 
+        all_events_t_l = all_events['loc']-0.5*extent*xp.multiply(all_events['N'],all_events['scale']) 
+        _index_l = xp.argsort(all_events_t_l) 
+        all_events_t_r = all_events['loc']+0.5*extent*xp.multiply(all_events['N'],all_events['scale']) 
+        _index_r = xp.argsort(all_events_t_r) 
         all_events_overlap = all_events_t_r[_index_r[:-1]]-all_events_t_l[_index_l[1:]] 
-        _slices = np.argwhere(all_events_overlap <= 0).flatten()+1 
-        _mc = np.split(all_events[_index_l], _slices, axis=0) 
+        _slices = xp.argwhere(all_events_overlap <= 0).flatten()+1 
+        _mc = xp.split(all_events[_index_l], _slices, axis=0) 
         if use_scratch:
             cwt.close()
         return _mc
@@ -526,8 +534,9 @@ def ucluster(events, selectivity, w, h):
     events : array_like of dtype([('loc', 'i8'), ('scale', 'f8'), ('coeff', 'f8'), ('height', 'f8'), ('N', 'f8'), ('class', 'u1')])
         Array of selected event(s) found in the given input events list (macro-cluster).
     """
+    xp = cp.get_array_module(events)
     selected_events = []
-    events = np.sort(events,order='coeff')[::-1]
+    events = xp.sort(events,order='coeff')[::-1]
     while(len(events) > selectivity):
         _n_0, _n_i = events['N'][0], events['N'] 
         _t_0, _t_i = events['loc'][0], events['loc'] 
@@ -535,15 +544,15 @@ def ucluster(events, selectivity, w, h):
         _c_0, _c_i = events['coeff'][0], events['coeff'] 
         _dt = _t_0 - _t_i 
         _ds = _s_0 - _s_i 
-        _theta_i = np.arctan(_ds/(_dt+eps)) 
+        _theta_i = xp.arctan(_ds/(_dt+eps)) 
         _dist_square = _dt**2 + _ds**2 
-        _r_0 = (w*h*_n_0*_s_0)/np.sqrt((w*_n_0*np.sin(_theta_i))**2+(h*np.cos(_theta_i))**2) 
-        _r_i = (w*h*_n_i*_s_i)/np.sqrt((w*_n_i*np.sin(_theta_i))**2+(h*np.cos(_theta_i))**2)*np.sqrt((_c_i-_c_i[-1])/(_c_0-_c_i[-1]))
+        _r_0 = (w*h*_n_0*_s_0)/xp.sqrt((w*_n_0*xp.sin(_theta_i))**2+(h*xp.cos(_theta_i))**2) 
+        _r_i = (w*h*_n_i*_s_i)/xp.sqrt((w*_n_i*xp.sin(_theta_i))**2+(h*xp.cos(_theta_i))**2)*xp.sqrt((_c_i-_c_i[-1])/(_c_0-_c_i[-1]))
         _dr_square = (_r_i+_r_0)**2
-        _adjacency = np.argwhere(np.nan_to_num(_dr_square,np.inf)-_dist_square >= 0).flatten()
+        _adjacency = xp.argwhere(xp.nan_to_num(_dr_square,xp.inf)-_dist_square >= 0).flatten()
         if len(_adjacency) > selectivity: selected_events.append(events[0])
-        events = np.delete(events,_adjacency)
-    return np.array(selected_events, dtype=d_type)
+        events = xp.delete(events,_adjacency)
+    return xp.array(selected_events, dtype=d_type)
 
 def ucluster_map(args):
     """ A wrapper function to use ucluster with map().
@@ -622,6 +631,7 @@ class PCWA:
         self.keep_cwt = keep_cwt
         self.cwt = {}
         self.wavelets = {}
+        self.gpu_mode = gpu_mode
         
     def detect_events(self,threshold, trace=None, wavelet=None, scales=None):
         """
@@ -645,10 +655,11 @@ class PCWA:
         events : ndarray with dtype([('loc', 'i8'), ('scale', 'f8'), ('coeff', 'f8'), ('height', 'f8'), ('N', 'f8'), ('class', 'u1')])
             Array including information of detected events.
         """
-        if type(trace) in [list, np.ndarray, pd.Series]:
-            self.trace = np.array(trace).flatten()
+        xp = cp.get_array_module(self.trace)
+        if type(trace) in [list, xp.ndarray, pd.Series]:
+            self.trace = xp.array(trace).flatten()
         elif type(self.trace) in [list, np.ndarray, pd.Series]:
-            trace = np.array(self.trace).flatten()
+            trace = xp.array(self.trace).flatten()
         else:
             raise RuntimeError('Input trace not valid.')
         if wavelet != None:
@@ -656,23 +667,23 @@ class PCWA:
         if scales != None:
             self.scales_range = scales
             if self.logscale:
-                self.scales_arr = np.logspace(np.log10(self.scales_range[0]), np.log10(self.scales_range[1]), int(self.scales_range[2]), dtype=np.float64)/self.dx
+                self.scales_arr = xp.logspace(xp.log10(self.scales_range[0]), xp.log10(self.scales_range[1]), int(self.scales_range[2]), dtype=xp.float64)/self.dx
             else:
-                self.scales_arr = np.linspace(self.scales_range[0], self.scales_range[1], int(self.scales_range[2]), dtype=np.float64)/self.dx
+                self.scales_arr = xp.linspace(self.scales_range[0], self.scales_range[1], int(self.scales_range[2]), dtype=xp.float64)/self.dx
         if len(self.scales_arr) == 0:
             if self.scales_range == None:
                 raise RuntimeError('Please set pcwa.scales_arr or provide proper scales_range.')
             else:
                 if self.logscale:
-                    self.scales_arr = np.logspace(np.log10(self.scales_range[0]), np.log10(self.scales_range[1]), int(self.scales_range[2]), dtype=np.float64)/self.dx
+                    self.scales_arr = xp.logspace(xp.log10(self.scales_range[0]), xp.log10(self.scales_range[1]), int(self.scales_range[2]), dtype=xp.float64)/self.dx
                 else:
-                    self.scales_arr = np.linspace(self.scales_range[0], self.scales_range[1], int(self.scales_range[2]), dtype=np.float64)/self.dx
+                    self.scales_arr = xp.linspace(self.scales_range[0], self.scales_range[1], int(self.scales_range[2]), dtype=xp.float64)/self.dx
         if len(self.trace) <= self.scales_arr[-1]:
             raise RuntimeError('Scales are longer than trace, shrink the scale range.')
         if type(self.wavelet) != list:
             self.wavelet = [self.wavelet]
         if self.events_scales_arr == None:
-            self.events_scales_arr = np.array([False]*self.scales_range[2])
+            self.events_scales_arr = xp.array([False]*self.scales_range[2])
             for r in self.events_scales_range:
                 self.events_scales_arr += (self.scales_arr>=(r[0]/self.dx))*(self.scales_arr<=(r[1]/self.dx))
         if self.wavelet_args == None:
@@ -690,7 +701,8 @@ class PCWA:
                 args = ((cluster,int(len(self.scales_arr)*self.selectivity),self.w,self.h) for cluster in clusters)
                 r = pool.map_async(ucluster, args, chunksize=100)
                 [selected_events.append(e) for e in r.get()]
-                self.events = np.concatenate(tuple(selected_events),axis=0)
+                xp = cp.get_array_module(selected_events)
+                self.events = xp.concatenate(tuple(selected_events),axis=0)
         else:
             if self.keep_cwt:
                 if self.update_cwt:
@@ -702,12 +714,17 @@ class PCWA:
             args = [(cluster,int(len(self.scales_arr)*self.selectivity),self.w,self.h) for cluster in clusters]
             for e in map(ucluster_map, args):
                 selected_events.append(e)
-            self.events = np.concatenate(tuple(selected_events),axis=0)
+            xp = cp.get_array_module(selected_events)
+            self.events = xp.concatenate(tuple(selected_events),axis=0)
         _idx_max = len(self.trace)
-        _idx = zip(np.clip(self.events['loc']-0.5*self.events['N']*self.events['scale'],a_min=0,a_max=_idx_max-1).astype(int),\
-            np.clip(self.events['loc']+0.5*self.events['N']*self.events['scale'],a_min=0,a_max=_idx_max).astype(int))
-        self.events['height'] = np.array([max(self.trace[_i[0]:_i[1]]) for _i in _idx])
-        return self.events
+        xp = cp.get_array_module(self.events)
+        _idx = zip(xp.clip(self.events['loc']-0.5*self.events['N']*self.events['scale'],a_min=0,a_max=_idx_max-1).astype(int),\
+            xp.clip(self.events['loc']+0.5*self.events['N']*self.events['scale'],a_min=0,a_max=_idx_max).astype(int))
+        self.events['height'] = xp.array([max(self.trace[_i[0]:_i[1]]) for _i in _idx])
+        try:
+            return self.events.get()
+        except:
+            return self.events
     
     def view_events(self,events,span=1,ax=None):
         if type(events) == list:
