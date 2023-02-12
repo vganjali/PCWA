@@ -1,4 +1,8 @@
-import numpy as np
+try:
+    import cupy as np
+except Exception as excpt:
+    print(excpt)
+    import numpy as np
 import pandas as pd
 import h5py
 from numpy.lib.arraysetops import isin
