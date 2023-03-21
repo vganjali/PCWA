@@ -1,5 +1,5 @@
 # PCWA
-A highly parallel and fast event detector based on CWT transform. *PCWA* is a multiscale approache to find events with any shape with a mother wavelet that matches with events shape (details provided in the *Nature Communications* manuscript currently under review). Unlike previous CWT based peak finders, *PCWA* is able to fit with any user defined mother wavelet function, <img src="https://render.githubusercontent.com/render/math?math=\psi(u,s)">, by grouping and clustering initial candidate points (local maxima). The clustering step involves *Macro-* and *u-* clustering steps to break big data into smaller *M-clusters*. The clustering steps utilized **x-axis**, **scale-axis** and **coefficient values** all together to improve accuracy of located events.
+A highly parallel and fast event detector based on CWT transform. *PCWA* is a multiscale approach to finding events with any shape with a mother wavelet that matches with events shape (details provided in the *Nature Communications* paper). Unlike previous CWT-based peak finders, *PCWA* is able to fit with any user-defined mother wavelet function, <img src="https://render.githubusercontent.com/render/math?math=\psi(u,s)">, by grouping and clustering initial candidate points (local maxima). The clustering step involves *Macro-* and *u-* clustering steps to break big data into smaller *M-clusters*. The clustering steps utilized **x-axis**, **scale-axis** and **coefficient values** all together to improve the accuracy of located events.
 
 
 ## Requirements
@@ -11,6 +11,9 @@ A highly parallel and fast event detector based on CWT transform. *PCWA* is a mu
 - pandas >= 1.2.1
 
 Most likely will work with older versions (Python > 3), not tested by the time of writing this document.
+
+## Installing PCWA
+*PCWA* is available at **PyPi** repository and can be installed via `pip install --upgrade pcwa`.
 
 ## How to use PCWA
 *PCWA* is designed as a Python class and requires initializing. Import *pcwa* and initiate a new instant:
@@ -122,6 +125,24 @@ print(f"TPR={tpr:.3f}, FDR={fdr:.3f}")
 
 the command window should show the *TPR* and *FDR* values based on the ground truth values and acceptable error range (1% here). *MS* parameter determines the way of applying acceptable error, for mass spectroscopy data error is considered relative to mass value (<img src="https://render.githubusercontent.com/render/math?math=e \times Mass">). If `MS=False`, the absolute error value is considered.
 The full example file is provided in this repository ([ms_example.py](https://github.com/vganjali/PCWA/blob/main/ms_example.py)).
+
+## Citation
+If you use *PCWA* or want to cite this work, please cite our [paper](https://www.nature.com/articles/s41467-022-28703-z) published in _Nature Communications_:
+
+```Properties
+@article{ganjalizadehFastCustomWavelet2022,
+  title = {Fast Custom Wavelet Analysis Technique for Single Molecule Detection and Identification},
+  author = {Ganjalizadeh, Vahid and Meena, Gopikrishnan G. and Wall, Thomas A. and Stott, Matthew A. and Hawkins, Aaron R. and Schmidt, Holger},
+  year = {2022},
+  journal = {Nature Communications},
+  volume = {13},
+  number = {1},
+  pages = {1--9},
+  publisher = {{Nature Publishing Group}},
+  doi = {10.1038/s41467-022-28703-z},
+  isbn = {2041-1723}
+}
+```
 
 ## Reference
 The provided dataset is a subset taken from the simulated Mass Spectroscopy dataset (DOI: [10.1093/bioinformatics/bti254](https://doi.org/10.1093/bioinformatics/bti254)).
